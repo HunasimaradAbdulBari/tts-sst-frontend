@@ -32,15 +32,12 @@ export default function WaveformVisualizer({ audioLevel = 0, isActive = false })
         bars = bars.map(bar => bar * 0.95);
       }
 
-      // Draw bars
+      // Draw bars with professional single color
       bars.forEach((barHeight, i) => {
         const x = i * barWidth;
-        const gradient = ctx.createLinearGradient(0, height, 0, height - barHeight);
-        gradient.addColorStop(0, '#3B82F6');
-        gradient.addColorStop(0.5, '#8B5CF6');
-        gradient.addColorStop(1, '#EC4899');
-
-        ctx.fillStyle = gradient;
+        
+        // Use solid blue color for professional look
+        ctx.fillStyle = '#3b82f6'; // Blue-600
         ctx.fillRect(x + 2, height - barHeight, barWidth - 4, barHeight);
       });
 
@@ -60,7 +57,7 @@ export default function WaveformVisualizer({ audioLevel = 0, isActive = false })
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="w-full h-24 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 rounded-xl overflow-hidden shadow-inner"
+      className="w-full h-24 bg-gray-50 dark:bg-slate-900 rounded-lg overflow-hidden border border-gray-200 dark:border-slate-700"
     >
       <canvas
         ref={canvasRef}

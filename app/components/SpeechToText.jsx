@@ -2,8 +2,6 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HiMicrophone, HiStop } from 'react-icons/hi';
-import { FiCopy, FiTrash2 } from 'react-icons/fi';
 import { useAudioRecorder } from '../hooks/useAudioRecorder';
 import { useLanguage } from '../context/LanguageContext';
 import { speechToText } from '../lib/apiClient';
@@ -11,6 +9,36 @@ import { formatDuration } from '../lib/audioUtils';
 import WaveformVisualizer from './WaveformVisualizer';
 import LoadingSpinner from './LoadingSpinner';
 import toast from 'react-hot-toast';
+
+// SVG Icons
+const MicIcon = () => (
+  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
+    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+    <line x1="12" y1="19" x2="12" y2="22"/>
+    <line x1="8" y1="22" x2="16" y2="22"/>
+  </svg>
+);
+
+const StopIcon = () => (
+  <svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor">
+    <rect x="6" y="6" width="12" height="12" rx="2"/>
+  </svg>
+);
+
+const CopyIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+  </svg>
+);
+
+const TrashIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <polyline points="3 6 5 6 21 6"/>
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+  </svg>
+);
 
 export default function SpeechToText() {
   const [transcribedText, setTranscribedText] = useState('');
@@ -79,9 +107,9 @@ export default function SpeechToText() {
       className="w-full max-w-3xl mx-auto space-y-6"
     >
       {/* Recording Card */}
-      <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl p-8 backdrop-blur-lg">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 text-center">
-          🎙️ Speech to Text
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-8">
+        <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6 text-center">
+          Speech to Text
         </h2>
 
         {/* Waveform Visualizer */}
@@ -95,20 +123,16 @@ export default function SpeechToText() {
         <div className="flex flex-col items-center gap-4">
           <motion.button
             onClick={isRecording ? handleStopRecording : handleStartRecording}
-            className={`w-24 h-24 rounded-full flex items-center justify-center text-white shadow-2xl ${
+            className={`w-24 h-24 rounded-full flex items-center justify-center text-white shadow-lg transition-all ${
               isRecording
-                ? 'bg-gradient-to-br from-red-500 to-pink-500 animate-pulse'
-                : 'bg-gradient-to-br from-blue-500 to-purple-500'
+                ? 'bg-red-600 hover:bg-red-700'
+                : 'bg-blue-600 hover:bg-blue-700'
             }`}
-            whileHover={{ scale: 1.1 }}
+            whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             disabled={isTranscribing}
           >
-            {isRecording ? (
-              <HiStop className="w-10 h-10" />
-            ) : (
-              <HiMicrophone className="w-10 h-10" />
-            )}
+            {isRecording ? <StopIcon /> : <MicIcon />}
           </motion.button>
 
           {/* Duration */}
@@ -116,7 +140,7 @@ export default function SpeechToText() {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="text-2xl font-mono font-bold text-gray-700 dark:text-gray-300"
+              className="text-2xl font-mono font-semibold text-gray-700 dark:text-gray-300"
             >
               {formatDuration(duration)}
             </motion.div>
@@ -124,7 +148,7 @@ export default function SpeechToText() {
 
           {/* Status Text */}
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            {isRecording ? 'Recording...' : 'Click to start recording'}
+            {isRecording ? 'Recording in progress...' : 'Click to start recording'}
           </p>
         </div>
 
@@ -138,12 +162,12 @@ export default function SpeechToText() {
             <button
               onClick={handleTranscribe}
               disabled={isTranscribing}
-              className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
             >
               {isTranscribing ? (
                 <LoadingSpinner type="pulse" size="sm" color="#ffffff" text="Transcribing..." />
               ) : (
-                '✨ Transcribe Audio'
+                'Transcribe Audio'
               )}
             </button>
           </motion.div>
@@ -157,32 +181,34 @@ export default function SpeechToText() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl p-8"
+            className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-8"
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                📝 Transcription
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                Transcription Result
               </h3>
               <div className="flex gap-2">
                 <motion.button
                   onClick={handleCopy}
-                  className="p-2 bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-800"
-                  whileHover={{ scale: 1.1 }}
+                  className="p-2 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
+                  whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
+                  title="Copy to clipboard"
                 >
-                  <FiCopy className="w-5 h-5" />
+                  <CopyIcon />
                 </motion.button>
                 <motion.button
                   onClick={handleClear}
-                  className="p-2 bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-300 rounded-lg hover:bg-red-200 dark:hover:bg-red-800"
-                  whileHover={{ scale: 1.1 }}
+                  className="p-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+                  whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
+                  title="Clear"
                 >
-                  <FiTrash2 className="w-5 h-5" />
+                  <TrashIcon />
                 </motion.button>
               </div>
             </div>
-            <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-xl min-h-[100px] max-h-[300px] overflow-y-auto">
+            <div className="p-4 bg-gray-50 dark:bg-slate-900 rounded-lg min-h-[100px] max-h-[300px] overflow-y-auto border border-gray-200 dark:border-slate-700">
               <p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">
                 {transcribedText}
               </p>
