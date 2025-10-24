@@ -1,14 +1,15 @@
 import axios from 'axios';
 import { API_BASE_URL, API_ENDPOINTS, ERROR_MESSAGES } from './constants';
 
-// Create axios instance with default config
+// Create axios instance - calls Next.js API routes
 const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 60000, // 60 seconds
+  baseURL: '/api', // Changed to call Next.js API routes
+  timeout: 60000,
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
 
 // Request interceptor
 apiClient.interceptors.request.use(
