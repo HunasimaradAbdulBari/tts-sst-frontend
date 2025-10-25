@@ -1,45 +1,33 @@
 import { NextResponse } from 'next/server';
 
-const EXPRESS_API_URL = process.env.EXPRESS_API_URL || 'http://localhost:5000';
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:5000';
 
 export async function GET() {
+  console.log('🏥 [Next.js Health] Request received');
+  
   try {
-    // Check Express backend health
-    const response = await fetch(`${EXPRESS_API_URL}/api/health`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
+    const response = await fetch(`${BACKEND_URL}/api/health`);
+    
     if (!response.ok) {
-      return NextResponse.json(
-        { 
-          status: 'unhealthy',
-          frontend: 'healthy',
-          backend: 'unhealthy',
-        },
-        { status: 503 }
-      );
+      return NextResponse.json({
+        error: 'Backend health check failed',
+        frontend: 'healthy',
+        backend: 'unhealthy'
+      }, { status: 500 });
     }
-
+    
     const data = await response.json();
     return NextResponse.json({
-      status: 'healthy',
-      frontend: 'healthy',
-      backend: data,
+      ...data,
+      frontend: 'healthy'
     });
-
+    
   } catch (error) {
-    console.error('Health Check Error:', error);
-    return NextResponse.json(
-      { 
-        status: 'unhealthy',
-        frontend: 'healthy',
-        backend: 'unreachable',
-        error: error.message,
-      },
-      { status: 503 }
-    );
+    console.error('❌ [Next.js Health] Error:', error);
+    return NextResponse.json({
+      error: `Health check failed: ${error.message}`,
+      frontend: 'healthy',
+      backend: 'unreachable'
+    }, { status: 500 });
   }
 }

@@ -1,32 +1,38 @@
 import { NextResponse } from 'next/server';
 
-const EXPRESS_API_URL = process.env.EXPRESS_API_URL || 'http://localhost:5000';
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:5000';
 
 export async function POST(request) {
+  console.log('🎙️ [Next.js STT] Request received');
+  
   try {
     const formData = await request.formData();
+    console.log('📁 [Next.js STT] FormData received');
     
-    // Forward to Express backend
-    const response = await fetch(`${EXPRESS_API_URL}/api/stt`, {
+    const response = await fetch(`${BACKEND_URL}/api/stt`, {
       method: 'POST',
       body: formData,
     });
-
+    
+    console.log('📡 [Next.js STT] Backend status:', response.status);
+    
     if (!response.ok) {
-      const error = await response.json();
+      const errorData = await response.text();
+      console.error('❌ [Next.js STT] Backend error:', errorData);
       return NextResponse.json(
-        { error: error.message || 'Transcription failed' },
+        { error: `Backend error: ${errorData}` },
         { status: response.status }
       );
     }
-
+    
     const data = await response.json();
+    console.log('✅ [Next.js STT] Success:', data);
     return NextResponse.json(data);
-
+    
   } catch (error) {
-    console.error('STT API Error:', error);
+    console.error('❌ [Next.js STT] Error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: `STT API Route Error: ${error.message}` },
       { status: 500 }
     );
   }

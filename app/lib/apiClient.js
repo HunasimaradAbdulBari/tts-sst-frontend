@@ -3,13 +3,12 @@ import { API_BASE_URL, API_ENDPOINTS, ERROR_MESSAGES } from './constants';
 
 // Create axios instance - calls Next.js API routes
 const apiClient = axios.create({
-  baseURL: '/api', // Changed to call Next.js API routes
+  baseURL: '/', // CHANGED: Remove '/api' from here
   timeout: 60000,
   headers: {
     'Content-Type': 'application/json',
   },
 });
-
 
 // Request interceptor
 apiClient.interceptors.request.use(
@@ -19,7 +18,6 @@ apiClient.interceptors.request.use(
       ...config.params,
       _t: Date.now(),
     };
-    
     console.log(`[API Request] ${config.method?.toUpperCase()} ${config.url}`);
     return config;
   },
@@ -37,114 +35,85 @@ apiClient.interceptors.response.use(
   },
   (error) => {
     console.error('[API Response Error]', error);
-    
     if (error.response) {
-      // Server responded with error status
-      const status = error.response.status;
-      const message = error.response.data?.message || error.response.data?.error;
-      
-      switch (status) {
-        case 400:
-          throw new Error(message || 'Bad request');
-        case 401:
-          throw new Error('Unauthorized');
-        case 403:
-          throw new Error('Forbidden');
-        case 404:
-          throw new Error(ERROR_MESSAGES.NOT_FOUND);
-        case 429:
-          throw new Error('Too many requests. Please try again later.');
-        case 500:
-          throw new Error(ERROR_MESSAGES.SERVER_ERROR);
-        default:
-          throw new Error(message || ERROR_MESSAGES.GENERIC);
-      }
+      const errorMessage = error.response.data?.error || error.response.statusText || 'Server error';
+      throw new Error(errorMessage);
     } else if (error.request) {
-      // Request made but no response
-      throw new Error(ERROR_MESSAGES.NETWORK);
+      throw new Error('Network error - could not reach server');
     } else {
-      // Error in request setup
-      throw new Error(error.message || ERROR_MESSAGES.GENERIC);
+      throw new Error('Request setup error');
     }
   }
 );
 
-// API Methods
-
 /**
- * Speech-to-Text API call
- * @param {File} audioFile - Audio file to transcribe
- * @param {string} language - Language code
- * @returns {Promise<Object>} Transcription result
+ * Text to Speech API call
  */
-export const speechToText = async (audioFile, language = 'en') => {
-  const formData = new FormData();
-  formData.append('audio', audioFile);
-  formData.append('language', language);
-
-  const response = await apiClient.post(API_ENDPOINTS.STT, formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
-  });
-
-  return response.data;
+export const textToSpeech = async (text, language = 'en') => {
+  try {
+    const response = await apiClient.post('/api/tts', {
+      text,
+      language
+    });
+    return response.data;
+  } catch (error) {
+    console.error('TTS API Error:', error);
+    throw error;
+  }
 };
 
 /**
- * Text-to-Speech API call
- * @param {string} text - Text to convert to speech
- * @param {string} language - Language code
- * @param {Object} options - Additional options (speed, pitch)
- * @returns {Promise<Object>} Audio URL and metadata
+ * Speech to Text API call
  */
-export const textToSpeech = async (text, language = 'en', options = {}) => {
-  const response = await apiClient.post(API_ENDPOINTS.TTS, {
-    text,
-    language,
-    ...options,
-  });
-
-  return response.data;
+export const speechToText = async (audioBlob, language = 'en') => {
+  try {
+    const formData = new FormData();
+    formData.append('audio', audioBlob, 'recording.webm');
+    formData.append('language', language);
+    
+    const response = await apiClient.post('/api/stt', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('STT API Error:', error);
+    throw error;
+  }
 };
 
 /**
  * Health check API call
- * @returns {Promise<Object>} Health status
  */
-export const checkHealth = async () => {
-  const response = await apiClient.get(API_ENDPOINTS.HEALTH);
-  return response.data;
-};
-
-/**
- * Get supported languages
- * @returns {Promise<Array>} List of supported languages
- */
-export const getLanguages = async () => {
-  const response = await apiClient.get(API_ENDPOINTS.LANGUAGES);
-  return response.data;
+export const healthCheck = async () => {
+  try {
+    const response = await apiClient.get('/api/health');
+    return response.data;
+  } catch (error) {
+    console.error('Health check error:', error);
+    throw error;
+  }
 };
 
 /**
  * Download audio file
- * @param {string} url - Audio file URL
- * @param {string} filename - Desired filename
  */
-export const downloadAudio = async (url, filename = 'audio.mp3') => {
+export const downloadAudio = async (audioUrl, filename = 'audio.mp3') => {
   try {
-    const response = await fetch(url);
+    const response = await fetch(audioUrl);
     const blob = await response.blob();
-    const downloadUrl = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = downloadUrl;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(downloadUrl);
+    
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
   } catch (error) {
-    console.error('Download failed:', error);
+    console.error('Download error:', error);
     throw new Error('Failed to download audio file');
   }
 };
