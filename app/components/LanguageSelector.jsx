@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '../context/LanguageContext';
 
-// SVG Icons
 const ChevronDownIcon = ({ className }) => (
   <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <polyline points="6 9 12 15 18 9"/>
@@ -14,6 +13,14 @@ const ChevronDownIcon = ({ className }) => (
 const CheckIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <polyline points="20 6 9 17 4 12"/>
+  </svg>
+);
+
+const GlobeIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="12" cy="12" r="10"/>
+    <line x1="2" y1="12" x2="22" y2="12"/>
+    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
   </svg>
 );
 
@@ -27,25 +34,27 @@ export default function LanguageSelector() {
   };
 
   return (
-    <div className="relative">
+    <div className="relative z-50">
       {/* Trigger Button */}
       <motion.button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 transition-colors min-w-[220px]"
+        className="flex items-center gap-3 px-5 py-3.5 glass rounded-2xl shadow-lg border border-gray-200/50 dark:border-slate-700/50 hover:shadow-xl transition-all min-w-[240px]"
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
       >
-        <span className="text-2xl">{currentLanguage.flag}</span>
+        <div className="w-10 h-10 bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/30 dark:to-purple-900/30 rounded-xl flex items-center justify-center text-2xl">
+          {currentLanguage.flag}
+        </div>
         <div className="flex-1 text-left">
           <p className="text-sm font-semibold text-gray-900 dark:text-white">
             {currentLanguage.name}
           </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
+          <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
             {currentLanguage.nativeName || currentLanguage.name}
           </p>
         </div>
         <ChevronDownIcon 
-          className={`text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          className={`text-gray-500 dark:text-gray-400 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}
         />
       </motion.button>
 
@@ -64,18 +73,21 @@ export default function LanguageSelector() {
 
             {/* Menu */}
             <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
-              className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-gray-200 dark:border-slate-700 overflow-hidden z-50"
+              initial={{ opacity: 0, y: -10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.95 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="absolute top-full left-0 right-0 mt-2 glass rounded-2xl shadow-2xl border border-gray-200/50 dark:border-slate-700/50 overflow-hidden z-50"
             >
               {/* Recent Languages */}
               {recentLanguages.length > 0 && (
-                <div className="p-2 border-b border-gray-200 dark:border-slate-700">
-                  <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 px-2 mb-1">
-                    Recent
-                  </p>
+                <div className="p-3 border-b border-gray-200 dark:border-slate-700">
+                  <div className="flex items-center gap-2 px-2 mb-2">
+                    <div className="w-1 h-1 bg-indigo-500 rounded-full"></div>
+                    <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Recent
+                    </p>
+                  </div>
                   {recentLanguages.map((lang) => (
                     <LanguageOption
                       key={`recent-${lang.code}`}
@@ -88,10 +100,13 @@ export default function LanguageSelector() {
               )}
 
               {/* All Languages */}
-              <div className="p-2 max-h-64 overflow-y-auto">
-                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 px-2 mb-1">
-                  All Languages
-                </p>
+              <div className="p-3 max-h-64 overflow-y-auto custom-scrollbar">
+                <div className="flex items-center gap-2 px-2 mb-2">
+                  <GlobeIcon />
+                  <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    All Languages
+                  </p>
+                </div>
                 {languages.map((lang) => (
                   <LanguageOption
                     key={lang.code}
@@ -113,17 +128,23 @@ function LanguageOption({ language, isSelected, onClick }) {
   return (
     <motion.button
       onClick={onClick}
-      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
         isSelected
-          ? 'bg-blue-50 dark:bg-blue-900/20'
+          ? 'bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30 shadow-sm'
           : 'hover:bg-gray-100 dark:hover:bg-slate-700'
       }`}
-      whileHover={{ scale: 1.01 }}
+      whileHover={{ scale: 1.01, x: 2 }}
       whileTap={{ scale: 0.99 }}
     >
-      <span className="text-2xl">{language.flag}</span>
+      <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-2xl ${
+        isSelected ? 'bg-white dark:bg-slate-800 shadow-sm' : 'bg-gray-50 dark:bg-slate-800'
+      }`}>
+        {language.flag}
+      </div>
       <div className="flex-1 text-left">
-        <p className="text-sm font-medium text-gray-900 dark:text-white">
+        <p className={`text-sm font-semibold ${
+          isSelected ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-900 dark:text-white'
+        }`}>
           {language.name}
         </p>
         {language.nativeName && language.nativeName !== language.name && (
@@ -133,9 +154,13 @@ function LanguageOption({ language, isSelected, onClick }) {
         )}
       </div>
       {isSelected && (
-        <div className="text-blue-600 dark:text-blue-400">
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          className="text-indigo-600 dark:text-indigo-400"
+        >
           <CheckIcon />
-        </div>
+        </motion.div>
       )}
     </motion.button>
   );

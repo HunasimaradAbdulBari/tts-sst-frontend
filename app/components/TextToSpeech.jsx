@@ -9,7 +9,6 @@ import AudioPlayer from './AudioPlayer';
 import LoadingSpinner from './LoadingSpinner';
 import toast from 'react-hot-toast';
 
-// SVG Icons
 const SpeakerIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
@@ -19,7 +18,7 @@ const SpeakerIcon = () => (
 );
 
 const TrashIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <polyline points="3 6 5 6 21 6"/>
     <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
   </svg>
@@ -39,10 +38,12 @@ export default function TextToSpeech() {
     }
 
     setIsGenerating(true);
+    setAudioUrl(null);
+    
     try {
       const result = await textToSpeech(text, currentLanguage.code);
       setAudioUrl(result.audio_url || result.audioUrl || result.url);
-      toast.success('Audio generated successfully!');
+      toast.success('🎵 Audio generated successfully!', { duration: 2000 });
     } catch (error) {
       console.error('TTS error:', error);
       toast.error(error.message || 'Failed to generate audio');
@@ -54,35 +55,41 @@ export default function TextToSpeech() {
   const handleClear = () => {
     setText('');
     setAudioUrl(null);
-    toast.success('Cleared');
+    toast.success('🗑️ Cleared', { duration: 2000 });
   };
 
   const remainingChars = 5000 - text.length;
+  const charPercentage = (text.length / 5000) * 100;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.1 }}
-      className="w-full max-w-3xl mx-auto space-y-6"
-    >
+    <div className="w-full max-w-3xl mx-auto">
       {/* Input Card */}
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-8">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 0.1 }}
+        className="glass rounded-3xl shadow-2xl p-8 md:p-10 border border-gray-200/50 dark:border-slate-700/50"
+      >
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
-            Text to Speech
+          <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 bg-clip-text text-transparent">
+            Enter Your Text
           </h2>
-          {text && (
-            <motion.button
-              onClick={handleClear}
-              className="p-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              title="Clear"
-            >
-              <TrashIcon />
-            </motion.button>
-          )}
+          <AnimatePresence>
+            {text && (
+              <motion.button
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                onClick={handleClear}
+                className="p-2.5 bg-gradient-to-r from-red-100 to-pink-100 dark:from-red-900/30 dark:to-pink-900/30 text-red-600 dark:text-red-400 rounded-xl hover:shadow-lg transition-all"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                title="Clear"
+              >
+                <TrashIcon />
+              </motion.button>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Text Area */}
@@ -90,12 +97,46 @@ export default function TextToSpeech() {
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder={`Enter your text in ${currentLanguage.name}...`}
-            className="w-full h-48 p-4 bg-gray-50 dark:bg-slate-900 rounded-lg border border-gray-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 outline-none resize-none text-gray-800 dark:text-gray-200 placeholder-gray-400"
+            placeholder={`Type or paste your text in ${currentLanguage.name}...`}
+            className="w-full h-48 p-5 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-900 dark:to-slate-800 rounded-2xl border-2 border-gray-200 dark:border-slate-700 focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/20 outline-none resize-none text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 transition-all duration-300 text-lg font-light leading-relaxed"
             maxLength={5000}
           />
-          <div className="absolute bottom-3 right-3 text-xs text-gray-500 dark:text-gray-400 bg-white dark:bg-slate-900 px-2 py-1 rounded">
-            {remainingChars} characters remaining
+          
+          {/* Character Count */}
+          <div className="absolute bottom-4 right-4">
+            <div className="flex items-center gap-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm px-3 py-1.5 rounded-xl shadow-lg border border-gray-200 dark:border-slate-700">
+              <div className="relative w-8 h-8">
+                <svg className="transform -rotate-90 w-8 h-8">
+                  <circle
+                    cx="16"
+                    cy="16"
+                    r="14"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    fill="none"
+                    className="text-gray-200 dark:text-slate-700"
+                  />
+                  <circle
+                    cx="16"
+                    cy="16"
+                    r="14"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    fill="none"
+                    strokeDasharray={`${2 * Math.PI * 14}`}
+                    strokeDashoffset={`${2 * Math.PI * 14 * (1 - charPercentage / 100)}`}
+                    className={`transition-all duration-300 ${
+                      charPercentage > 90 ? 'text-red-500' : charPercentage > 70 ? 'text-yellow-500' : 'text-indigo-500'
+                    }`}
+                  />
+                </svg>
+              </div>
+              <span className={`text-xs font-semibold ${
+                charPercentage > 90 ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'
+              }`}>
+                {remainingChars}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -103,12 +144,15 @@ export default function TextToSpeech() {
         <motion.button
           onClick={handleGenerate}
           disabled={isGenerating || !text.trim()}
-          className="w-full mt-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm flex items-center justify-center gap-2"
+          className="w-full mt-6 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-2xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl flex items-center justify-center gap-3"
           whileHover={{ scale: text.trim() ? 1.01 : 1 }}
           whileTap={{ scale: text.trim() ? 0.99 : 1 }}
         >
           {isGenerating ? (
-            <LoadingSpinner type="pulse" size="sm" color="#ffffff" text="Generating..." />
+            <>
+              <LoadingSpinner type="pulse" size="sm" color="#ffffff" />
+              <span>Generating audio...</span>
+            </>
           ) : (
             <>
               <SpeakerIcon />
@@ -116,15 +160,17 @@ export default function TextToSpeech() {
             </>
           )}
         </motion.button>
-      </div>
+      </motion.div>
 
       {/* Audio Player */}
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
         {audioUrl && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: -20 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            className="mt-6"
           >
             <AudioPlayer 
               audioUrl={audioUrl} 
@@ -133,6 +179,6 @@ export default function TextToSpeech() {
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
+    </div>
   );
 }

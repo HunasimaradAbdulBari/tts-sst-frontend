@@ -1,46 +1,22 @@
-/* Additional custom animations */
-
-@keyframes wave {
-  0%, 100% {
-    transform: scaleY(0.5);
+/* Rotate scale */
+@keyframes rotateScale {
+  0% {
+    transform: rotate(0deg) scale(1);
   }
   50% {
-    transform: scaleY(1);
+    transform: rotate(180deg) scale(1.1);
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
   }
 }
 
-.wave-animation {
-  animation: wave 1s ease-in-out infinite;
+.rotate-scale {
+  animation: rotateScale 2s ease-in-out infinite;
 }
 
-@keyframes float {
-  0%, 100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-20px);
-  }
-}
-
-.float-animation {
-  animation: float 3s ease-in-out infinite;
-}
-
-@keyframes gradient-shift {
-  0%, 100% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-}
-
-.gradient-animate {
-  background-size: 200% 200%;
-  animation: gradient-shift 5s ease infinite;
-}
-
-@keyframes bounce-in {
+/* Bounce in */
+@keyframes bounceIn {
   0% {
     opacity: 0;
     transform: scale(0.3);
@@ -58,10 +34,11 @@
 }
 
 .bounce-in {
-  animation: bounce-in 0.5s ease-out;
+  animation: bounceIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 
-@keyframes slide-in-right {
+/* Slide from right */
+@keyframes slideFromRight {
   from {
     transform: translateX(100%);
     opacity: 0;
@@ -72,11 +49,12 @@
   }
 }
 
-.slide-in-right {
-  animation: slide-in-right 0.5s ease-out;
+.slide-from-right {
+  animation: slideFromRight 0.5s ease-out;
 }
 
-@keyframes slide-in-left {
+/* Slide from left */
+@keyframes slideFromLeft {
   from {
     transform: translateX(-100%);
     opacity: 0;
@@ -87,22 +65,168 @@
   }
 }
 
-.slide-in-left {
-  animation: slide-in-left 0.5s ease-out;
+.slide-from-left {
+  animation: slideFromLeft 0.5s ease-out;
 }
 
-@keyframes rotate-scale {
-  0% {
-    transform: rotate(0deg) scale(1);
+/* Breathing animation */
+@keyframes breathe {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
   }
   50% {
-    transform: rotate(180deg) scale(1.2);
-  }
-  100% {
-    transform: rotate(360deg) scale(1);
+    transform: scale(1.02);
+    opacity: 0.9;
   }
 }
 
-.rotate-scale {
-  animation: rotate-scale 2s ease-in-out infinite;
+.breathe {
+  animation: breathe 3s ease-in-out infinite;
 }
+
+/* Spin fade */
+@keyframes spinFade {
+  0% {
+    transform: rotate(0deg);
+    opacity: 0;
+  }
+  100% {
+    transform: rotate(360deg);
+    opacity: 1;
+  }
+}
+
+.spin-fade {
+  animation: spinFade 0.8s ease-out;
+} Enhanced animations for modern UI */
+
+/* Custom scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.3);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.5);
+}
+
+/* Smooth entrance animations */
+@keyframes smoothSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.smooth-slide-in {
+  animation: smoothSlideIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Gradient animation */
+@keyframes gradientShift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.gradient-animate {
+  background-size: 200% 200%;
+  animation: gradientShift 8s ease infinite;
+}
+
+/* Floating animation */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Shimmer effect */
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.shimmer {
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    rgba(255, 255, 255, 0.3) 50%,
+    transparent 100%
+  );
+  background-size: 1000px 100%;
+  animation: shimmer 2s infinite;
+}
+
+/* Pulse glow */
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(139, 92, 246, 0.6);
+  }
+}
+
+.pulse-glow {
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+
+/* Scale bounce */
+@keyframes scaleBounce {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.scale-bounce {
+  animation: scaleBounce 0.6s ease-in-out;
+}
+
+/* Fade slide up */
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-slide-up {
+  animation: fadeSlideUp 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
