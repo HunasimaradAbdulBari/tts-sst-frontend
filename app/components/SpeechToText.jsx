@@ -12,7 +12,7 @@ import toast from 'react-hot-toast';
 
 // SVG Icons
 const MicIcon = () => (
-  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
     <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
     <line x1="12" y1="19" x2="12" y2="22"/>
@@ -21,7 +21,7 @@ const MicIcon = () => (
 );
 
 const StopIcon = () => (
-  <svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor">
+  <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
     <rect x="6" y="6" width="12" height="12" rx="2"/>
   </svg>
 );
@@ -37,6 +37,13 @@ const TrashIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <polyline points="3 6 5 6 21 6"/>
     <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+  </svg>
+);
+
+const SendIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <line x1="22" y1="2" x2="11" y2="13"/>
+    <polygon points="22 2 15 22 11 13 2 9 22 2"/>
   </svg>
 );
 
@@ -57,8 +64,9 @@ export default function SpeechToText() {
 
   const handleStartRecording = async () => {
     try {
+      setTranscribedText(''); // Clear previous result
       await startRecording();
-      toast.success('Recording started');
+      toast.success('🎙️ Recording started');
     } catch (error) {
       toast.error(error.message || 'Failed to start recording');
     }
@@ -66,7 +74,7 @@ export default function SpeechToText() {
 
   const handleStopRecording = () => {
     stopRecording();
-    toast.success('Recording stopped');
+    toast.success('⏸️ Recording stopped');
   };
 
   const handleTranscribe = async () => {
@@ -80,7 +88,7 @@ export default function SpeechToText() {
       const audioFile = new File([audioBlob], 'recording.webm', { type: 'audio/webm' });
       const result = await speechToText(audioFile, currentLanguage.code);
       setTranscribedText(result.text || result.transcription || '');
-      toast.success('Transcription completed!');
+      toast.success('✅ Transcription completed!');
     } catch (error) {
       console.error('Transcription error:', error);
       toast.error(error.message || 'Transcription failed');
@@ -91,106 +99,168 @@ export default function SpeechToText() {
 
   const handleCopy = () => {
     navigator.clipboard.writeText(transcribedText);
-    toast.success('Text copied to clipboard!');
+    toast.success('📋 Text copied to clipboard!');
   };
 
   const handleClear = () => {
     setTranscribedText('');
     resetRecording();
-    toast.success('Cleared');
+    toast.success('🗑️ Cleared');
+  };
+
+  const handleUseText = () => {
+    // This would switch to TTS tab and populate text (implement in parent)
+    toast.success('✨ Text ready for speech generation');
   };
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="w-full max-w-3xl mx-auto space-y-6"
+      className="w-full max-w-4xl mx-auto space-y-6"
     >
       {/* Recording Card */}
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-8">
-        <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6 text-center">
-          Speech to Text
-        </h2>
+      <div className="glass rounded-3xl shadow-xl p-8 border border-gray-200/50 dark:border-slate-700/50">
+        <div className="flex items-center justify-center mb-8">
+          <motion.div
+            animate={{ rotate: [0, 10, -10, 0] }}
+            transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+            className="w-10 h-10 bg-gradient-to-br from-red-100 to-pink-100 dark:from-red-900/30 dark:to-pink-900/30 rounded-xl flex items-center justify-center mr-3"
+          >
+            <MicIcon />
+          </motion.div>
+          <h2 className="text-2xl font-bold bg-gradient-to-r from-red-600 to-pink-600 dark:from-red-400 dark:to-pink-400 bg-clip-text text-transparent">
+            Speech to Text
+          </h2>
+        </div>
 
         {/* Waveform Visualizer */}
-        {isRecording && (
-          <div className="mb-6">
-            <WaveformVisualizer audioLevel={audioLevel} isActive={isRecording} />
-          </div>
-        )}
+        <AnimatePresence>
+          {isRecording && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mb-6"
+            >
+              <WaveformVisualizer audioLevel={audioLevel} isActive={isRecording} />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Recording Button */}
-        <div className="flex flex-col items-center gap-4">
+        <div className="flex flex-col items-center gap-6">
           <motion.button
             onClick={isRecording ? handleStopRecording : handleStartRecording}
-            className={`w-24 h-24 rounded-full flex items-center justify-center text-white shadow-lg transition-all ${
+            className={`relative w-32 h-32 rounded-full flex items-center justify-center text-white shadow-2xl transition-all ${
               isRecording
-                ? 'bg-red-600 hover:bg-red-700'
-                : 'bg-blue-600 hover:bg-blue-700'
+                ? 'bg-gradient-to-br from-red-500 to-pink-600'
+                : 'bg-gradient-to-br from-indigo-600 to-purple-600'
             }`}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             disabled={isTranscribing}
+            animate={isRecording ? { boxShadow: ['0 0 0 0 rgba(239, 68, 68, 0.7)', '0 0 0 20px rgba(239, 68, 68, 0)'] } : {}}
+            transition={isRecording ? { duration: 1.5, repeat: Infinity } : {}}
           >
             {isRecording ? <StopIcon /> : <MicIcon />}
           </motion.button>
 
           {/* Duration */}
-          {isRecording && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-2xl font-mono font-semibold text-gray-700 dark:text-gray-300"
-            >
-              {formatDuration(duration)}
-            </motion.div>
-          )}
+          <AnimatePresence>
+            {isRecording && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="text-3xl font-mono font-bold text-gray-700 dark:text-gray-300 tabular-nums"
+              >
+                {formatDuration(duration)}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Status Text */}
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            {isRecording ? 'Recording in progress...' : 'Click to start recording'}
-          </p>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-sm font-medium text-gray-600 dark:text-gray-400"
+          >
+            {isRecording ? (
+              <span className="flex items-center gap-2">
+                <motion.span
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ duration: 1, repeat: Infinity }}
+                  className="w-2 h-2 bg-red-500 rounded-full"
+                />
+                Recording in progress...
+              </span>
+            ) : (
+              'Click to start recording'
+            )}
+          </motion.p>
         </div>
 
         {/* Transcribe Button */}
-        {audioBlob && !isRecording && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-6"
-          >
-            <button
-              onClick={handleTranscribe}
-              disabled={isTranscribing}
-              className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+        <AnimatePresence>
+          {audioBlob && !isRecording && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              className="mt-8"
             >
-              {isTranscribing ? (
-                <LoadingSpinner type="pulse" size="sm" color="#ffffff" text="Transcribing..." />
-              ) : (
-                'Transcribe Audio'
-              )}
-            </button>
-          </motion.div>
-        )}
+              <button
+                onClick={handleTranscribe}
+                disabled={isTranscribing}
+                className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-500 text-white rounded-2xl font-semibold transition-all disabled:cursor-not-allowed shadow-lg hover:shadow-xl flex items-center justify-center gap-3"
+              >
+                {isTranscribing ? (
+                  <>
+                    <LoadingSpinner type="pulse" size="sm" color="#ffffff" />
+                    <span>Transcribing...</span>
+                  </>
+                ) : (
+                  <>
+                    <SendIcon />
+                    <span>Transcribe Audio</span>
+                  </>
+                )}
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Transcription Result */}
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
         {transcribedText && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-8"
+            key="transcription-result"
+            initial={{ opacity: 0, y: 30, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -30, scale: 0.9 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="glass rounded-3xl shadow-xl p-8 border border-gray-200/50 dark:border-slate-700/50"
           >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Transcription Result
-              </h3>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1, rotate: 360 }}
+                  transition={{ type: "spring", stiffness: 200 }}
+                  className="w-10 h-10 bg-gradient-to-br from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30 rounded-xl flex items-center justify-center text-2xl"
+                >
+                  ✨
+                </motion.div>
+                <h3 className="text-xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 dark:from-green-400 dark:to-emerald-400 bg-clip-text text-transparent">
+                  Transcription Result
+                </h3>
+              </div>
               <div className="flex gap-2">
                 <motion.button
                   onClick={handleCopy}
-                  className="p-2 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
+                  className="p-2.5 glass text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-700 transition-all border border-gray-200/50 dark:border-slate-700/50"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   title="Copy to clipboard"
@@ -199,7 +269,7 @@ export default function SpeechToText() {
                 </motion.button>
                 <motion.button
                   onClick={handleClear}
-                  className="p-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+                  className="p-2.5 bg-gradient-to-r from-red-50 to-pink-50 dark:from-red-900/20 dark:to-pink-900/20 text-red-600 dark:text-red-400 rounded-xl hover:shadow-lg transition-all border border-red-200/50 dark:border-red-700/50"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   title="Clear"
@@ -208,11 +278,30 @@ export default function SpeechToText() {
                 </motion.button>
               </div>
             </div>
-            <div className="p-4 bg-gray-50 dark:bg-slate-900 rounded-lg min-h-[100px] max-h-[300px] overflow-y-auto border border-gray-200 dark:border-slate-700">
-              <p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">
+            
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="p-6 glass rounded-2xl min-h-[120px] max-h-[400px] overflow-y-auto border border-gray-200/50 dark:border-slate-700/50 custom-scrollbar"
+            >
+              <p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed text-lg font-light">
                 {transcribedText}
               </p>
-            </div>
+            </motion.div>
+
+            <motion.button
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              onClick={handleUseText}
+              className="w-full mt-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-2xl font-semibold transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
+            >
+              <SendIcon />
+              <span>Use for Text-to-Speech</span>
+            </motion.button>
           </motion.div>
         )}
       </AnimatePresence>

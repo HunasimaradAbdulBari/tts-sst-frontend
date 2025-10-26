@@ -1,11 +1,11 @@
 'use client';
 
-import { ClipLoader, PulseLoader, BeatLoader } from 'react-spinners';
+import { motion } from 'framer-motion';
 
 export default function LoadingSpinner({ 
   type = 'pulse', 
   size = 'md', 
-  color = '#3B82F6',
+  color = '#6366F1',
   text = '' 
 }) {
   const sizes = {
@@ -14,17 +14,98 @@ export default function LoadingSpinner({
     lg: 50,
   };
 
-  const spinners = {
-    clip: <ClipLoader color={color} size={sizes[size]} />,
-    pulse: <PulseLoader color={color} size={sizes[size] / 3} />,
-    beat: <BeatLoader color={color} size={sizes[size] / 3} />,
-  };
+  const dotSize = sizes[size] / 3;
+
+  if (type === 'pulse') {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3">
+        <div className="flex gap-2">
+          {[0, 1, 2].map((index) => (
+            <motion.div
+              key={index}
+              className="rounded-full"
+              style={{
+                width: dotSize,
+                height: dotSize,
+                background: `linear-gradient(135deg, ${color}, #A855F7)`,
+              }}
+              animate={{
+                scale: [1, 1.5, 1],
+                opacity: [0.6, 1, 0.6],
+              }}
+              transition={{
+                duration: 1,
+                repeat: Infinity,
+                delay: index * 0.15,
+              }}
+            />
+          ))}
+        </div>
+        {text && (
+          <motion.p
+            className="text-sm font-medium text-gray-600 dark:text-gray-400"
+            animate={{ opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 1.5, repeat: Infinity }}
+          >
+            {text}
+          </motion.p>
+        )}
+      </div>
+    );
+  }
+
+  if (type === 'ring') {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3">
+        <motion.div
+          className="rounded-full border-4 border-t-transparent"
+          style={{
+            width: sizes[size],
+            height: sizes[size],
+            borderColor: color,
+            borderTopColor: 'transparent',
+          }}
+          animate={{ rotate: 360 }}
+          transition={{
+            duration: 1,
+            repeat: Infinity,
+            ease: 'linear',
+          }}
+        />
+        {text && (
+          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+            {text}
+          </p>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col items-center justify-center gap-3">
-      {spinners[type] || spinners.pulse}
+      <div className="flex gap-2">
+        {[0, 1, 2].map((index) => (
+          <motion.div
+            key={index}
+            className="rounded-full"
+            style={{
+              width: dotSize,
+              height: dotSize,
+              background: `linear-gradient(135deg, ${color}, #A855F7)`,
+            }}
+            animate={{
+              y: ['0%', '-100%', '0%'],
+            }}
+            transition={{
+              duration: 0.6,
+              repeat: Infinity,
+              delay: index * 0.1,
+            }}
+          />
+        ))}
+      </div>
       {text && (
-        <p className="text-sm text-gray-600 dark:text-gray-400 animate-pulse">
+        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
           {text}
         </p>
       )}

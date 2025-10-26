@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import SpeechToText from './components/SpeechToText';
 import TextToSpeech from './components/TextToSpeech';
 import LanguageSelector from './components/LanguageSelector';
@@ -24,141 +24,148 @@ const SpeakerIcon = ({ className }) => (
   </svg>
 );
 
-const LightningIcon = ({ className }) => (
+const SparklesIcon = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-  </svg>
-);
-
-const GlobeIcon = ({ className }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <circle cx="12" cy="12" r="10"/>
-    <line x1="2" y1="12" x2="22" y2="12"/>
-    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-  </svg>
-);
-
-const LayoutIcon = ({ className }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-    <line x1="3" y1="9" x2="21" y2="9"/>
-    <line x1="9" y1="21" x2="9" y2="9"/>
+    <path d="M12 2L14 8L20 10L14 12L12 18L10 12L4 10L10 8L12 2Z"/>
+    <path d="M20 14L21 17L24 18L21 19L20 22L19 19L16 18L19 17L20 14Z"/>
   </svg>
 );
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState('stt');
+  const [activeTab, setActiveTab] = useState('tts');
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8">
-      {/* Hero Section */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-center space-y-4"
-      >
-        <h1 className="text-5xl md:text-6xl font-bold text-gray-900 dark:text-white">
-          Multilingual Speech AI
-        </h1>
-        <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-          Professional voice recognition and speech synthesis platform supporting multiple languages
-        </p>
-      </motion.div>
-
-      {/* Language Selector */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.1 }}
-        className="flex justify-center"
-      >
-        <LanguageSelector />
-      </motion.div>
-
-      {/* Tab Selector */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="flex justify-center"
-      >
-        <div className="inline-flex bg-white dark:bg-slate-800 rounded-lg p-1.5 shadow-sm border border-gray-200 dark:border-slate-700">
-          <button
-            onClick={() => setActiveTab('stt')}
-            className={`flex items-center gap-2 px-6 py-2.5 rounded-md font-medium transition-all ${
-              activeTab === 'stt'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700'
-            }`}
+    <div className="min-h-[calc(100vh-200px)] flex items-center justify-center px-4 py-12">
+      <div className="w-full max-w-4xl space-y-8">
+        {/* Hero Section */}
+        <motion.div
+          initial={{ opacity: 0, y: -30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          className="text-center space-y-4"
+        >
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-full border border-indigo-200/50 dark:border-indigo-700/50"
           >
-            <MicrophoneIcon className="w-5 h-5" />
-            Speech to Text
-          </button>
-          <button
-            onClick={() => setActiveTab('tts')}
-            className={`flex items-center gap-2 px-6 py-2.5 rounded-md font-medium transition-all ${
-              activeTab === 'tts'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700'
-            }`}
+            <SparklesIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+            <span className="text-sm font-medium text-indigo-700 dark:text-indigo-300">
+              AI-Powered Speech Platform
+            </span>
+          </motion.div>
+
+          <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight">
+            <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 dark:from-indigo-400 dark:via-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
+              Voice Intelligence
+            </span>
+          </h1>
+          
+          <p className="text-lg md:text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto font-light leading-relaxed">
+            Transform speech to text and text to speech with natural, human-like quality across multiple languages
+          </p>
+        </motion.div>
+
+        {/* Language Selector */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.3, duration: 0.5 }}
+          className="flex justify-center"
+        >
+          <LanguageSelector />
+        </motion.div>
+
+        {/* Tab Selector */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4, duration: 0.5 }}
+          className="flex justify-center"
+        >
+          <div className="inline-flex glass rounded-2xl p-1.5 shadow-lg border border-gray-200/50 dark:border-slate-700/50">
+            <button
+              onClick={() => setActiveTab('tts')}
+              className={`relative flex items-center gap-2.5 px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${
+                activeTab === 'tts'
+                  ? 'text-white'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+              }`}
+            >
+              {activeTab === 'tts' && (
+                <motion.div
+                  layoutId="activeTab"
+                  className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl shadow-lg"
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                />
+              )}
+              <SpeakerIcon className="w-5 h-5 relative z-10" />
+              <span className="relative z-10">Text to Speech</span>
+            </button>
+            
+            <button
+              onClick={() => setActiveTab('stt')}
+              className={`relative flex items-center gap-2.5 px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${
+                activeTab === 'stt'
+                  ? 'text-white'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+              }`}
+            >
+              {activeTab === 'stt' && (
+                <motion.div
+                  layoutId="activeTab"
+                  className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl shadow-lg"
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                />
+              )}
+              <MicrophoneIcon className="w-5 h-5 relative z-10" />
+              <span className="relative z-10">Speech to Text</span>
+            </button>
+          </div>
+        </motion.div>
+
+        {/* Content Area */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, x: activeTab === 'stt' ? 50 : -50, scale: 0.95 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: activeTab === 'stt' ? -50 : 50, scale: 0.95 }}
+            transition={{ duration: 0.4, ease: "easeInOut" }}
           >
-            <SpeakerIcon className="w-5 h-5" />
-            Text to Speech
-          </button>
-        </div>
-      </motion.div>
+            {activeTab === 'stt' ? <SpeechToText /> : <TextToSpeech />}
+          </motion.div>
+        </AnimatePresence>
 
-      {/* Content Area */}
-      <motion.div
-        key={activeTab}
-        initial={{ opacity: 0, x: activeTab === 'stt' ? -20 : 20 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: activeTab === 'stt' ? 20 : -20 }}
-        transition={{ duration: 0.3 }}
-      >
-        {activeTab === 'stt' ? <SpeechToText /> : <TextToSpeech />}
-      </motion.div>
-
-      {/* Features Grid */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-        className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16"
-      >
-        <FeatureCard
-          icon={<LightningIcon className="w-8 h-8" />}
-          title="Fast & Accurate"
-          description="Powered by Whisper AI and Edge-TTS for precise transcription and natural speech synthesis"
-        />
-        <FeatureCard
-          icon={<GlobeIcon className="w-8 h-8" />}
-          title="Multilingual Support"
-          description="Full support for English, Hindi, Kannada, and Urdu with native voice models"
-        />
-        <FeatureCard
-          icon={<LayoutIcon className="w-8 h-8" />}
-          title="Professional Interface"
-          description="Clean, modern design with responsive layout and comprehensive accessibility features"
-        />
-      </motion.div>
+        {/* Feature Pills */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6, duration: 0.5 }}
+          className="flex flex-wrap items-center justify-center gap-3 pt-8"
+        >
+          {[
+            { icon: '⚡', text: 'Lightning Fast' },
+            { icon: '🌍', text: '4+ Languages' },
+            { icon: '🎯', text: 'High Accuracy' },
+            { icon: '🔒', text: 'Secure & Private' }
+          ].map((feature, index) => (
+            <motion.div
+              key={feature.text}
+              initial={{ opacity: 0, scale: 0 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.7 + index * 0.1, type: "spring" }}
+              className="flex items-center gap-2 px-4 py-2 glass rounded-full border border-gray-200/50 dark:border-slate-700/50 hover:border-indigo-300 dark:hover:border-indigo-600 transition-all"
+            >
+              <span className="text-lg">{feature.icon}</span>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                {feature.text}
+              </span>
+            </motion.div>
+          ))}
+        </motion.div>
+      </div>
     </div>
-  );
-}
-
-function FeatureCard({ icon, title, description }) {
-  return (
-    <motion.div
-      whileHover={{ y: -5 }}
-      className="bg-white dark:bg-slate-800 rounded-lg p-6 border border-gray-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-all"
-    >
-      <div className="text-blue-600 dark:text-blue-400 mb-3">{icon}</div>
-      <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-        {title}
-      </h3>
-      <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
-        {description}
-      </p>
-    </motion.div>
   );
 }

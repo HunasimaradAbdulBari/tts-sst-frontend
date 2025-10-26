@@ -10,38 +10,66 @@ const GithubIcon = () => (
   </svg>
 );
 
+const HeartIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+  </svg>
+);
+
 export default function Footer() {
   return (
     <motion.footer
-      initial={{ y: 100, opacity: 0 }}
+      initial={{ y: 50, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.5, delay: 0.2 }}
-      className="mt-20 border-t border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900"
+      transition={{ duration: 0.6, delay: 0.2 }}
+      className="mt-20 border-t border-gray-200/50 dark:border-slate-800/50 glass backdrop-blur-xl"
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           {/* Copyright */}
-          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-            <span>© 2024 {APP_INFO.NAME}. All rights reserved.</span>
-          </div>
+          <motion.div 
+            className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            <span>© 2024 {APP_INFO.NAME}</span>
+            <span className="text-gray-400 dark:text-gray-600">•</span>
+            <span className="flex items-center gap-1">
+              Made with <HeartIcon /> by {APP_INFO.AUTHOR}
+            </span>
+          </motion.div>
 
           {/* Links */}
-          <div className="flex items-center gap-6">
+          <motion.div 
+            className="flex items-center gap-4"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.4 }}
+          >
             <motion.a
               href={APP_INFO.GITHUB}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-              whileHover={{ scale: 1.1 }}
+              className="p-2 glass rounded-lg text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all border border-gray-200/50 dark:border-slate-700/50"
+              whileHover={{ scale: 1.1, y: -2 }}
               whileTap={{ scale: 0.95 }}
               aria-label="GitHub"
             >
               <GithubIcon />
             </motion.a>
-            <span className="text-sm text-gray-500 dark:text-gray-500">
-              Made by {APP_INFO.AUTHOR}
-            </span>
-          </div>
+            
+            <div className="flex items-center gap-2 px-3 py-1.5 glass rounded-lg border border-gray-200/50 dark:border-slate-700/50">
+              <motion.div
+                className="w-2 h-2 bg-green-500 rounded-full"
+                animate={{ scale: [1, 1.2, 1], opacity: [1, 0.7, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              />
+              <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                All systems operational
+              </span>
+            </div>
+          </motion.div>
         </div>
       </div>
     </motion.footer>
