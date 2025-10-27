@@ -64,7 +64,7 @@ export default function SpeechToText() {
 
   const handleStartRecording = async () => {
     try {
-      setTranscribedText(''); // Clear previous result
+      setTranscribedText('');
       await startRecording();
       toast.success('🎙️ Recording started');
     } catch (error) {
@@ -85,12 +85,77 @@ export default function SpeechToText() {
 
     setIsTranscribing(true);
     try {
+      console.log('='.repeat(60));
+      console.log('🎙️ [STT Component] Starting transcription...');
+      console.log('Audio blob size:', audioBlob.size);
+      console.log('Audio blob type:', audioBlob.type);
+      console.log('Language:', currentLanguage.code);
+      console.log('='.repeat(60));
+      
       const audioFile = new File([audioBlob], 'recording.webm', { type: 'audio/webm' });
+      
+      console.log('📁 [STT Component] Created audio file:');
+      console.log('  - Name:', audioFile.name);
+      console.log('  - Size:', audioFile.size, 'bytes');
+      console.log('  - Type:', audioFile.type);
+      
       const result = await speechToText(audioFile, currentLanguage.code);
-      setTranscribedText(result.text || result.transcription || '');
+      
+      console.log('✅ [STT Component] Raw result received:');
+      console.log(JSON.stringify(result, null, 2));
+      
+      // CRITICAL: Extract text from ANY possible structure
+      let extractedText = '';
+      
+      // Try all possible paths (same pattern as TTS)
+      const possiblePaths = [
+        result?.data?.text,
+        result?.data?.transcription,
+        result?.text,
+        result?.transcription,
+      ];
+      
+      for (const path of possiblePaths) {
+        if (path && typeof path === 'string') {
+          extractedText = path;
+          console.log('✅ [STT Component] Found text at path');
+          break;
+        }
+      }
+      
+      console.log('📝 [STT Component] Final extracted text:', extractedText);
+      
+      if (!extractedText) {
+        console.error('❌ [STT Component] No text found in response');
+        console.error('Full response structure:', result);
+        throw new Error('No transcription received from server. Check backend logs.');
+      }
+      
+      // Verify text is not empty
+      if (extractedText.trim().length === 0) {
+        console.error('❌ [STT Component] Received empty text');
+        throw new Error('Transcription is empty. Try speaking louder or longer.');
+      }
+      
+      console.log('✅ [STT Component] Setting transcribed text:', extractedText);
+      setTranscribedText(extractedText);
+      
       toast.success('✅ Transcription completed!');
+      console.log('='.repeat(60));
+      
     } catch (error) {
-      console.error('Transcription error:', error);
+      console.error('='.repeat(60));
+      console.error('❌ [STT Component] ERROR OCCURRED');
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+      
+      if (error.response) {
+        console.error('Response status:', error.response.status);
+        console.error('Response data:', error.response.data);
+      }
+      
+      console.error('='.repeat(60));
+      
       toast.error(error.message || 'Transcription failed');
     } finally {
       setIsTranscribing(false);
@@ -98,8 +163,10 @@ export default function SpeechToText() {
   };
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(transcribedText);
-    toast.success('📋 Text copied to clipboard!');
+    if (transcribedText) {
+      navigator.clipboard.writeText(transcribedText);
+      toast.success('📋 Text copied to clipboard!');
+    }
   };
 
   const handleClear = () => {
@@ -109,8 +176,11 @@ export default function SpeechToText() {
   };
 
   const handleUseText = () => {
-    // This would switch to TTS tab and populate text (implement in parent)
-    toast.success('✨ Text ready for speech generation');
+    // Store text in localStorage to pass to TTS tab
+    if (transcribedText) {
+      localStorage.setItem('pendingTTSText', transcribedText);
+      toast.success('✨ Text ready! Switch to Text-to-Speech tab.');
+    }
   };
 
   return (

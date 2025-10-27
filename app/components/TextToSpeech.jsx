@@ -41,11 +41,85 @@ export default function TextToSpeech() {
     setAudioUrl(null);
     
     try {
+      console.log('='.repeat(60));
+      console.log('🔊 [TTS Component] Starting generation...');
+      console.log('Text:', text.substring(0, 50) + '...');
+      console.log('Language:', currentLanguage.code);
+      console.log('='.repeat(60));
+      
       const result = await textToSpeech(text, currentLanguage.code);
-      setAudioUrl(result.audio_url || result.audioUrl || result.url);
+      
+      console.log('✅ [TTS Component] Raw result received:');
+      console.log(JSON.stringify(result, null, 2));
+      
+      // CRITICAL: Extract audio URL from ANY possible structure
+      let extractedAudioUrl = null;
+      
+      // Try all possible paths
+      const possiblePaths = [
+        result?.data?.audio_url,
+        result?.data?.audioUrl,
+        result?.data?.url,
+        result?.audio_url,
+        result?.audioUrl,
+        result?.url,
+      ];
+      
+      for (const path of possiblePaths) {
+        if (path && typeof path === 'string') {
+          extractedAudioUrl = path;
+          console.log('✅ [TTS Component] Found audio URL at path');
+          break;
+        }
+      }
+      
+      console.log('🎵 [TTS Component] Final extracted URL:', extractedAudioUrl);
+      
+      if (!extractedAudioUrl) {
+        console.error('❌ [TTS Component] No audio URL found in response');
+        console.error('Full response structure:', result);
+        throw new Error('No audio URL received from server. Check backend logs.');
+      }
+      
+      // Verify URL is valid
+      if (!extractedAudioUrl.startsWith('http')) {
+        console.error('❌ [TTS Component] Invalid URL format:', extractedAudioUrl);
+        throw new Error('Invalid audio URL format');
+      }
+      
+      console.log('✅ [TTS Component] Setting audio URL:', extractedAudioUrl);
+      setAudioUrl(extractedAudioUrl);
+      
       toast.success('🎵 Audio generated successfully!', { duration: 2000 });
+      
+      // Verify audio is accessible
+      console.log('🔍 [TTS Component] Verifying audio accessibility...');
+      fetch(extractedAudioUrl, { method: 'HEAD' })
+        .then(response => {
+          if (response.ok) {
+            console.log('✅ [TTS Component] Audio file is accessible');
+          } else {
+            console.error('❌ [TTS Component] Audio file not accessible:', response.status);
+            toast.error('Audio file may not be accessible');
+          }
+        })
+        .catch(err => {
+          console.error('❌ [TTS Component] Error checking audio:', err);
+        });
+      
     } catch (error) {
-      console.error('TTS error:', error);
+      console.error('='.repeat(60));
+      console.error('❌ [TTS Component] ERROR OCCURRED');
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+      
+      if (error.response) {
+        console.error('Response status:', error.response.status);
+        console.error('Response data:', error.response.data);
+      }
+      
+      console.error('='.repeat(60));
+      
       toast.error(error.message || 'Failed to generate audio');
     } finally {
       setIsGenerating(false);
