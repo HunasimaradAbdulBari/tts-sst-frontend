@@ -3,7 +3,7 @@ import { API_BASE_URL, API_ENDPOINTS, ERROR_MESSAGES } from './constants';
 
 // Create axios instance - calls Next.js API routes
 const apiClient = axios.create({
-  baseURL: '/', // CHANGED: Remove '/api' from here
+  baseURL: '/',
   timeout: 60000,
   headers: {
     'Content-Type': 'application/json',
@@ -13,7 +13,6 @@ const apiClient = axios.create({
 // Request interceptor
 apiClient.interceptors.request.use(
   (config) => {
-    // Add timestamp to prevent caching
     config.params = {
       ...config.params,
       _t: Date.now(),
@@ -47,13 +46,13 @@ apiClient.interceptors.response.use(
 );
 
 /**
- * Text to Speech API call
+ * Text to Speech API call - NO LANGUAGE PARAMETER (Auto-Detection)
  */
-export const textToSpeech = async (text, language = 'en') => {
+export const textToSpeech = async (text) => {
   try {
     const response = await apiClient.post('/api/tts', {
-      text,
-      language
+      text
+      // Language removed - auto-detection in backend
     });
     return response.data;
   } catch (error) {
@@ -63,13 +62,13 @@ export const textToSpeech = async (text, language = 'en') => {
 };
 
 /**
- * Speech to Text API call
+ * Speech to Text API call - NO LANGUAGE PARAMETER (Auto-Detection)
  */
-export const speechToText = async (audioBlob, language = 'en') => {
+export const speechToText = async (audioBlob) => {
   try {
     const formData = new FormData();
     formData.append('audio', audioBlob, 'recording.webm');
-    formData.append('language', language);
+    // Language removed - auto-detection in backend
     
     const response = await apiClient.post('/api/stt', formData, {
       headers: {

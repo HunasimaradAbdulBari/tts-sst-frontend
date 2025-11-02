@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAudioRecorder } from '../hooks/useAudioRecorder';
-import { useLanguage } from '../context/LanguageContext';
 import { speechToText } from '../lib/apiClient';
 import { formatDuration } from '../lib/audioUtils';
 import WaveformVisualizer from './WaveformVisualizer';
@@ -47,10 +46,18 @@ const SendIcon = () => (
   </svg>
 );
 
+const GlobeIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="12" cy="12" r="10"/>
+    <line x1="2" y1="12" x2="22" y2="12"/>
+    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+  </svg>
+);
+
 export default function SpeechToText() {
   const [transcribedText, setTranscribedText] = useState('');
+  const [detectedLanguage, setDetectedLanguage] = useState(null);
   const [isTranscribing, setIsTranscribing] = useState(false);
-  const { currentLanguage } = useLanguage();
   
   const {
     isRecording,
@@ -65,8 +72,9 @@ export default function SpeechToText() {
   const handleStartRecording = async () => {
     try {
       setTranscribedText('');
+      setDetectedLanguage(null);
       await startRecording();
-      toast.success('🎙️ Recording started');
+      toast.success('🎙️ Recording started - speak in any language');
     } catch (error) {
       toast.error(error.message || 'Failed to start recording');
     }
@@ -86,10 +94,8 @@ export default function SpeechToText() {
     setIsTranscribing(true);
     try {
       console.log('='.repeat(60));
-      console.log('🎙️ [STT Component] Starting transcription...');
+      console.log('🎙️ [STT Component] Starting transcription with AUTO-DETECTION...');
       console.log('Audio blob size:', audioBlob.size);
-      console.log('Audio blob type:', audioBlob.type);
-      console.log('Language:', currentLanguage.code);
       console.log('='.repeat(60));
       
       const audioFile = new File([audioBlob], 'recording.webm', { type: 'audio/webm' });
@@ -97,65 +103,57 @@ export default function SpeechToText() {
       console.log('📁 [STT Component] Created audio file:');
       console.log('  - Name:', audioFile.name);
       console.log('  - Size:', audioFile.size, 'bytes');
-      console.log('  - Type:', audioFile.type);
       
-      const result = await speechToText(audioFile, currentLanguage.code);
+      // NO language parameter - auto-detection
+      const result = await speechToText(audioFile);
       
-      console.log('✅ [STT Component] Raw result received:');
+      console.log('✅ [STT Component] Response received:');
       console.log(JSON.stringify(result, null, 2));
       
-      // CRITICAL: Extract text from ANY possible structure
+      // Extract text and detected language
       let extractedText = '';
+      let extractedLanguage = null;
       
-      // Try all possible paths (same pattern as TTS)
-      const possiblePaths = [
+      const possibleTextPaths = [
         result?.data?.text,
         result?.data?.transcription,
         result?.text,
         result?.transcription,
       ];
       
-      for (const path of possiblePaths) {
+      for (const path of possibleTextPaths) {
         if (path && typeof path === 'string') {
           extractedText = path;
-          console.log('✅ [STT Component] Found text at path');
           break;
         }
       }
       
-      console.log('📝 [STT Component] Final extracted text:', extractedText);
+      // Extract detected language
+      extractedLanguage = result?.data?.detected_language || 
+                         result?.detected_language;
+      
+      console.log('📝 [STT Component] Extracted text:', extractedText);
+      console.log('🌐 [STT Component] Detected language:', extractedLanguage);
       
       if (!extractedText) {
-        console.error('❌ [STT Component] No text found in response');
-        console.error('Full response structure:', result);
-        throw new Error('No transcription received from server. Check backend logs.');
+        throw new Error('No transcription received from server');
       }
       
-      // Verify text is not empty
       if (extractedText.trim().length === 0) {
-        console.error('❌ [STT Component] Received empty text');
         throw new Error('Transcription is empty. Try speaking louder or longer.');
       }
       
-      console.log('✅ [STT Component] Setting transcribed text:', extractedText);
       setTranscribedText(extractedText);
+      setDetectedLanguage(extractedLanguage);
       
-      toast.success('✅ Transcription completed!');
+      toast.success(
+        `✅ Transcribed in ${extractedLanguage?.name || 'detected language'}!`,
+        { duration: 3000 }
+      );
       console.log('='.repeat(60));
       
     } catch (error) {
-      console.error('='.repeat(60));
-      console.error('❌ [STT Component] ERROR OCCURRED');
-      console.error('Error message:', error.message);
-      console.error('Error stack:', error.stack);
-      
-      if (error.response) {
-        console.error('Response status:', error.response.status);
-        console.error('Response data:', error.response.data);
-      }
-      
-      console.error('='.repeat(60));
-      
+      console.error('❌ [STT Component] Error:', error);
       toast.error(error.message || 'Transcription failed');
     } finally {
       setIsTranscribing(false);
@@ -171,12 +169,12 @@ export default function SpeechToText() {
 
   const handleClear = () => {
     setTranscribedText('');
+    setDetectedLanguage(null);
     resetRecording();
     toast.success('🗑️ Cleared');
   };
 
   const handleUseText = () => {
-    // Store text in localStorage to pass to TTS tab
     if (transcribedText) {
       localStorage.setItem('pendingTTSText', transcribedText);
       toast.success('✨ Text ready! Switch to Text-to-Speech tab.');
@@ -199,9 +197,14 @@ export default function SpeechToText() {
           >
             <MicIcon />
           </motion.div>
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-red-600 to-pink-600 dark:from-red-400 dark:to-pink-400 bg-clip-text text-transparent">
-            Speech to Text
-          </h2>
+          <div>
+            <h2 className="text-2xl font-bold bg-gradient-to-r from-red-600 to-pink-600 dark:from-red-400 dark:to-pink-400 bg-clip-text text-transparent">
+              Speech to Text
+            </h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Speak in any language - automatic detection
+            </p>
+          </div>
         </div>
 
         {/* Waveform Visualizer */}
@@ -263,10 +266,10 @@ export default function SpeechToText() {
                   transition={{ duration: 1, repeat: Infinity }}
                   className="w-2 h-2 bg-red-500 rounded-full"
                 />
-                Recording in progress...
+                Recording - language will be auto-detected...
               </span>
             ) : (
-              'Click to start recording'
+              'Click to start recording in any language'
             )}
           </motion.p>
         </div>
@@ -288,12 +291,12 @@ export default function SpeechToText() {
                 {isTranscribing ? (
                   <>
                     <LoadingSpinner type="pulse" size="sm" color="#ffffff" />
-                    <span>Transcribing...</span>
+                    <span>Detecting language & transcribing...</span>
                   </>
                 ) : (
                   <>
                     <SendIcon />
-                    <span>Transcribe Audio</span>
+                    <span>Transcribe Audio (Auto-Detect Language)</span>
                   </>
                 )}
               </button>
@@ -301,6 +304,35 @@ export default function SpeechToText() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Detected Language Badge */}
+      <AnimatePresence>
+        {detectedLanguage && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="flex justify-center"
+          >
+            <div className="inline-flex items-center gap-3 px-5 py-3 glass rounded-2xl shadow-lg border border-emerald-200/50 dark:border-emerald-700/50">
+              <GlobeIcon />
+              <div className="text-left">
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                  Detected Language
+                </p>
+                <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                  {detectedLanguage.name} ({detectedLanguage.native_name})
+                </p>
+              </div>
+              <div className="flex items-center gap-1 px-2 py-1 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
+                <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                  {(detectedLanguage.confidence * 100).toFixed(0)}%
+                </span>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Transcription Result */}
       <AnimatePresence mode="wait">

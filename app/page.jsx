@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import SpeechToText from './components/SpeechToText';
 import TextToSpeech from './components/TextToSpeech';
-import LanguageSelector from './components/LanguageSelector';
 
 // SVG Icons
 const MicrophoneIcon = ({ className }) => (
@@ -31,6 +30,12 @@ const SparklesIcon = ({ className }) => (
   </svg>
 );
 
+const MagicWandIcon = ({ className }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M15 4V2M15 16V14M8 9H10M20 9H22M17.8 11.8L19 13M17.8 6.2L19 5M3 21L12 12M12.2 6.2L11 5"/>
+  </svg>
+);
+
 export default function Home() {
   const [activeTab, setActiveTab] = useState('tts');
 
@@ -50,31 +55,47 @@ export default function Home() {
             transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
             className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-full border border-indigo-200/50 dark:border-indigo-700/50"
           >
-            <SparklesIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+            <MagicWandIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
             <span className="text-sm font-medium text-indigo-700 dark:text-indigo-300">
-              AI-Powered Speech Platform
+              AI-Powered with Auto Language Detection
             </span>
           </motion.div>
 
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight">
             <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 dark:from-indigo-400 dark:via-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
-              Voice Intelligence
+              Smart Voice Intelligence
             </span>
           </h1>
           
           <p className="text-lg md:text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto font-light leading-relaxed">
-            Transform speech to text and text to speech with natural, human-like quality across multiple languages
+            Speak or type in any of 22+ Indian languages - our AI automatically detects and processes your language
           </p>
         </motion.div>
 
-        {/* Language Selector */}
+        {/* Auto-Detection Badge */}
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.3, duration: 0.5 }}
           className="flex justify-center"
         >
-          <LanguageSelector />
+          <div className="inline-flex items-center gap-3 px-6 py-3 glass rounded-2xl shadow-lg border border-emerald-200/50 dark:border-emerald-700/50">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+              className="w-10 h-10 bg-gradient-to-br from-emerald-100 to-green-100 dark:from-emerald-900/30 dark:to-green-900/30 rounded-xl flex items-center justify-center"
+            >
+              <SparklesIcon className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+            </motion.div>
+            <div className="text-left">
+              <p className="text-sm font-bold text-emerald-900 dark:text-emerald-100">
+                Automatic Language Detection
+              </p>
+              <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                No language selection needed!
+              </p>
+            </div>
+          </div>
         </motion.div>
 
         {/* Tab Selector */}
@@ -146,8 +167,9 @@ export default function Home() {
           className="flex flex-wrap items-center justify-center gap-3 pt-8"
         >
           {[
+            { icon: '🤖', text: 'Auto Language Detection' },
+            { icon: '🌍', text: '22+ Indian Languages' },
             { icon: '⚡', text: 'Lightning Fast' },
-            { icon: '🌍', text: '4+ Languages' },
             { icon: '🎯', text: 'High Accuracy' },
             { icon: '🔒', text: 'Secure & Private' }
           ].map((feature, index) => (

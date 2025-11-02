@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useLanguage } from '../context/LanguageContext';
 import { textToSpeech } from '../lib/apiClient';
 import { validateText } from '../lib/validators';
 import AudioPlayer from './AudioPlayer';
@@ -24,11 +23,19 @@ const TrashIcon = () => (
   </svg>
 );
 
+const GlobeIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="12" cy="12" r="10"/>
+    <line x1="2" y1="12" x2="22" y2="12"/>
+    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+  </svg>
+);
+
 export default function TextToSpeech() {
   const [text, setText] = useState('');
   const [audioUrl, setAudioUrl] = useState(null);
+  const [detectedLanguage, setDetectedLanguage] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const { currentLanguage } = useLanguage();
 
   const handleGenerate = async () => {
     const validation = validateText(text);
@@ -39,23 +46,23 @@ export default function TextToSpeech() {
 
     setIsGenerating(true);
     setAudioUrl(null);
+    setDetectedLanguage(null);
     
     try {
       console.log('='.repeat(60));
-      console.log('🔊 [TTS Component] Starting generation...');
+      console.log('🔊 [TTS Component] Starting generation with AUTO-DETECTION...');
       console.log('Text:', text.substring(0, 50) + '...');
-      console.log('Language:', currentLanguage.code);
       console.log('='.repeat(60));
       
-      const result = await textToSpeech(text, currentLanguage.code);
+      const result = await textToSpeech(text); // NO language parameter
       
-      console.log('✅ [TTS Component] Raw result received:');
+      console.log('✅ [TTS Component] Response received:');
       console.log(JSON.stringify(result, null, 2));
       
-      // CRITICAL: Extract audio URL from ANY possible structure
+      // Extract audio URL and detected language
       let extractedAudioUrl = null;
+      let extractedLanguage = null;
       
-      // Try all possible paths
       const possiblePaths = [
         result?.data?.audio_url,
         result?.data?.audioUrl,
@@ -68,58 +75,35 @@ export default function TextToSpeech() {
       for (const path of possiblePaths) {
         if (path && typeof path === 'string') {
           extractedAudioUrl = path;
-          console.log('✅ [TTS Component] Found audio URL at path');
           break;
         }
       }
       
-      console.log('🎵 [TTS Component] Final extracted URL:', extractedAudioUrl);
+      // Extract detected language info
+      extractedLanguage = result?.data?.detected_language || 
+                         result?.detected_language;
+      
+      console.log('🎵 Extracted URL:', extractedAudioUrl);
+      console.log('🌐 Detected Language:', extractedLanguage);
       
       if (!extractedAudioUrl) {
-        console.error('❌ [TTS Component] No audio URL found in response');
-        console.error('Full response structure:', result);
-        throw new Error('No audio URL received from server. Check backend logs.');
+        throw new Error('No audio URL received from server');
       }
       
-      // Verify URL is valid
       if (!extractedAudioUrl.startsWith('http')) {
-        console.error('❌ [TTS Component] Invalid URL format:', extractedAudioUrl);
         throw new Error('Invalid audio URL format');
       }
       
-      console.log('✅ [TTS Component] Setting audio URL:', extractedAudioUrl);
       setAudioUrl(extractedAudioUrl);
+      setDetectedLanguage(extractedLanguage);
       
-      toast.success('🎵 Audio generated successfully!', { duration: 2000 });
-      
-      // Verify audio is accessible
-      console.log('🔍 [TTS Component] Verifying audio accessibility...');
-      fetch(extractedAudioUrl, { method: 'HEAD' })
-        .then(response => {
-          if (response.ok) {
-            console.log('✅ [TTS Component] Audio file is accessible');
-          } else {
-            console.error('❌ [TTS Component] Audio file not accessible:', response.status);
-            toast.error('Audio file may not be accessible');
-          }
-        })
-        .catch(err => {
-          console.error('❌ [TTS Component] Error checking audio:', err);
-        });
+      toast.success(
+        `🎵 Audio generated in ${extractedLanguage?.name || 'detected language'}!`,
+        { duration: 3000 }
+      );
       
     } catch (error) {
-      console.error('='.repeat(60));
-      console.error('❌ [TTS Component] ERROR OCCURRED');
-      console.error('Error message:', error.message);
-      console.error('Error stack:', error.stack);
-      
-      if (error.response) {
-        console.error('Response status:', error.response.status);
-        console.error('Response data:', error.response.data);
-      }
-      
-      console.error('='.repeat(60));
-      
+      console.error('❌ [TTS Component] Error:', error);
       toast.error(error.message || 'Failed to generate audio');
     } finally {
       setIsGenerating(false);
@@ -129,6 +113,7 @@ export default function TextToSpeech() {
   const handleClear = () => {
     setText('');
     setAudioUrl(null);
+    setDetectedLanguage(null);
     toast.success('🗑️ Cleared', { duration: 2000 });
   };
 
@@ -145,9 +130,14 @@ export default function TextToSpeech() {
         className="glass rounded-3xl shadow-2xl p-8 md:p-10 border border-gray-200/50 dark:border-slate-700/50"
       >
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 bg-clip-text text-transparent">
-            Enter Your Text
-          </h2>
+          <div>
+            <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 bg-clip-text text-transparent">
+              Enter Your Text
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Type in any language - we'll detect it automatically
+            </p>
+          </div>
           <AnimatePresence>
             {text && (
               <motion.button
@@ -171,7 +161,7 @@ export default function TextToSpeech() {
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder={`Type or paste your text in ${currentLanguage.name}...`}
+            placeholder="Type or paste your text in any Indian language..."
             className="w-full h-48 p-5 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-900 dark:to-slate-800 rounded-2xl border-2 border-gray-200 dark:border-slate-700 focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/20 outline-none resize-none text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 transition-all duration-300 text-lg font-light leading-relaxed"
             maxLength={5000}
           />
@@ -225,16 +215,45 @@ export default function TextToSpeech() {
           {isGenerating ? (
             <>
               <LoadingSpinner type="pulse" size="sm" color="#ffffff" />
-              <span>Generating audio...</span>
+              <span>Detecting language & generating...</span>
             </>
           ) : (
             <>
               <SpeakerIcon />
-              <span>Generate Speech</span>
+              <span>Generate Speech (Auto-Detect Language)</span>
             </>
           )}
         </motion.button>
       </motion.div>
+
+      {/* Detected Language Badge */}
+      <AnimatePresence>
+        {detectedLanguage && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="mt-4 flex justify-center"
+          >
+            <div className="inline-flex items-center gap-3 px-5 py-3 glass rounded-2xl shadow-lg border border-emerald-200/50 dark:border-emerald-700/50">
+              <GlobeIcon />
+              <div className="text-left">
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                  Detected Language
+                </p>
+                <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                  {detectedLanguage.name} ({detectedLanguage.native_name})
+                </p>
+              </div>
+              <div className="flex items-center gap-1 px-2 py-1 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
+                <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                  {(detectedLanguage.confidence * 100).toFixed(0)}%
+                </span>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Audio Player */}
       <AnimatePresence mode="wait">
@@ -248,7 +267,7 @@ export default function TextToSpeech() {
           >
             <AudioPlayer 
               audioUrl={audioUrl} 
-              filename={`${currentLanguage.name}_speech.mp3`}
+              filename={`${detectedLanguage?.code || 'audio'}_speech.mp3`}
             />
           </motion.div>
         )}
