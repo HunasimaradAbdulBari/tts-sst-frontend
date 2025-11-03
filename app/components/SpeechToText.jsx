@@ -1,6 +1,7 @@
+// app/components/SpeechToText.jsx - OPTIMIZED VERSION
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAudioRecorder } from '../hooks/useAudioRecorder';
 import { speechToText } from '../lib/apiClient';
@@ -9,7 +10,6 @@ import WaveformVisualizer from './WaveformVisualizer';
 import LoadingSpinner from './LoadingSpinner';
 import toast from 'react-hot-toast';
 
-// SVG Icons
 const MicIcon = () => (
   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
@@ -32,13 +32,6 @@ const CopyIcon = () => (
   </svg>
 );
 
-const TrashIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <polyline points="3 6 5 6 21 6"/>
-    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-  </svg>
-);
-
 const SendIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <line x1="22" y1="2" x2="11" y2="13"/>
@@ -46,11 +39,9 @@ const SendIcon = () => (
   </svg>
 );
 
-const GlobeIcon = () => (
+const SparkleIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <circle cx="12" cy="12" r="10"/>
-    <line x1="2" y1="12" x2="22" y2="12"/>
-    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+    <path d="M12 2L14 8L20 10L14 12L12 18L10 12L4 10L10 8L12 2Z"/>
   </svg>
 );
 
@@ -58,6 +49,8 @@ export default function SpeechToText() {
   const [transcribedText, setTranscribedText] = useState('');
   const [detectedLanguage, setDetectedLanguage] = useState(null);
   const [isTranscribing, setIsTranscribing] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [timeEstimate, setTimeEstimate] = useState('');
   
   const {
     isRecording,
@@ -69,12 +62,27 @@ export default function SpeechToText() {
     resetRecording,
   } = useAudioRecorder();
 
+  // Progress estimation
+  useEffect(() => {
+    if (isTranscribing) {
+      const interval = setInterval(() => {
+        setProgress(prev => {
+          if (prev >= 90) return prev;
+          return prev + Math.random() * 10;
+        });
+      }, 500);
+      
+      return () => clearInterval(interval);
+    }
+  }, [isTranscribing]);
+
   const handleStartRecording = async () => {
     try {
       setTranscribedText('');
       setDetectedLanguage(null);
+      setProgress(0);
       await startRecording();
-      toast.success('🎙️ Recording started - speak in any language');
+      toast.success('🎙️ Recording - speak clearly in any language', { duration: 2000 });
     } catch (error) {
       toast.error(error.message || 'Failed to start recording');
     }
@@ -82,7 +90,7 @@ export default function SpeechToText() {
 
   const handleStopRecording = () => {
     stopRecording();
-    toast.success('⏸️ Recording stopped');
+    toast.success('⏸️ Recording stopped - ready to transcribe');
   };
 
   const handleTranscribe = async () => {
@@ -92,93 +100,82 @@ export default function SpeechToText() {
     }
 
     setIsTranscribing(true);
+    setProgress(10);
+    
+    const startTime = Date.now();
+    
     try {
-      console.log('='.repeat(60));
-      console.log('🎙️ [STT Component] Starting transcription with AUTO-DETECTION...');
-      console.log('Audio blob size:', audioBlob.size);
-      console.log('='.repeat(60));
+      console.log('🎙️ Starting transcription...');
       
-      const audioFile = new File([audioBlob], 'recording.webm', { type: 'audio/webm' });
+      setProgress(30);
+      setTimeEstimate('Processing audio...');
       
-      console.log('📁 [STT Component] Created audio file:');
-      console.log('  - Name:', audioFile.name);
-      console.log('  - Size:', audioFile.size, 'bytes');
+      const audioFile = new File([audioBlob], 'recording.webm', { 
+        type: 'audio/webm' 
+      });
       
-      // NO language parameter - auto-detection
+      setProgress(50);
+      setTimeEstimate('Detecting language...');
+      
+      // Call optimized STT API
       const result = await speechToText(audioFile);
       
-      console.log('✅ [STT Component] Response received:');
-      console.log(JSON.stringify(result, null, 2));
+      setProgress(80);
+      setTimeEstimate('Finalizing...');
       
-      // Extract text and detected language
-      let extractedText = '';
-      let extractedLanguage = null;
+      console.log('✅ Response:', result);
       
-      const possibleTextPaths = [
-        result?.data?.text,
-        result?.data?.transcription,
-        result?.text,
-        result?.transcription,
-      ];
+      // Extract data
+      const text = result?.data?.text || result?.text || '';
+      const langInfo = result?.data?.detected_language || result?.detected_language;
       
-      for (const path of possibleTextPaths) {
-        if (path && typeof path === 'string') {
-          extractedText = path;
-          break;
-        }
+      if (!text || text.trim().length === 0) {
+        throw new Error('No text transcribed - try speaking louder or longer');
       }
       
-      // Extract detected language
-      extractedLanguage = result?.data?.detected_language || 
-                         result?.detected_language;
+      setProgress(100);
+      setTranscribedText(text);
+      setDetectedLanguage(langInfo);
       
-      console.log('📝 [STT Component] Extracted text:', extractedText);
-      console.log('🌐 [STT Component] Detected language:', extractedLanguage);
-      
-      if (!extractedText) {
-        throw new Error('No transcription received from server');
-      }
-      
-      if (extractedText.trim().length === 0) {
-        throw new Error('Transcription is empty. Try speaking louder or longer.');
-      }
-      
-      setTranscribedText(extractedText);
-      setDetectedLanguage(extractedLanguage);
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
       
       toast.success(
-        `✅ Transcribed in ${extractedLanguage?.name || 'detected language'}!`,
+        <div>
+          <div className="font-bold">✅ Transcribed in {elapsed}s!</div>
+          <div className="text-sm">{langInfo?.name || 'Language detected'}</div>
+        </div>,
         { duration: 3000 }
       );
-      console.log('='.repeat(60));
       
     } catch (error) {
-      console.error('❌ [STT Component] Error:', error);
-      toast.error(error.message || 'Transcription failed');
+      console.error('❌ Transcription error:', error);
+      setProgress(0);
+      toast.error(
+        <div>
+          <div className="font-bold">Transcription failed</div>
+          <div className="text-sm">{error.message}</div>
+        </div>,
+        { duration: 4000 }
+      );
     } finally {
       setIsTranscribing(false);
+      setTimeEstimate('');
     }
   };
 
   const handleCopy = () => {
     if (transcribedText) {
       navigator.clipboard.writeText(transcribedText);
-      toast.success('📋 Text copied to clipboard!');
+      toast.success('📋 Text copied!');
     }
   };
 
   const handleClear = () => {
     setTranscribedText('');
     setDetectedLanguage(null);
+    setProgress(0);
     resetRecording();
     toast.success('🗑️ Cleared');
-  };
-
-  const handleUseText = () => {
-    if (transcribedText) {
-      localStorage.setItem('pendingTTSText', transcribedText);
-      toast.success('✨ Text ready! Switch to Text-to-Speech tab.');
-    }
   };
 
   return (
@@ -187,8 +184,9 @@ export default function SpeechToText() {
       animate={{ opacity: 1, y: 0 }}
       className="w-full max-w-4xl mx-auto space-y-6"
     >
-      {/* Recording Card */}
+      {/* Main Recording Card */}
       <div className="glass rounded-3xl shadow-xl p-8 border border-gray-200/50 dark:border-slate-700/50">
+        {/* Header */}
         <div className="flex items-center justify-center mb-8">
           <motion.div
             animate={{ rotate: [0, 10, -10, 0] }}
@@ -201,13 +199,14 @@ export default function SpeechToText() {
             <h2 className="text-2xl font-bold bg-gradient-to-r from-red-600 to-pink-600 dark:from-red-400 dark:to-pink-400 bg-clip-text text-transparent">
               Speech to Text
             </h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Speak in any language - automatic detection
+            <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+              <SparkleIcon className="w-3 h-3" />
+              Auto language detection - just speak naturally
             </p>
           </div>
         </div>
 
-        {/* Waveform Visualizer */}
+        {/* Waveform */}
         <AnimatePresence>
           {isRecording && (
             <motion.div
@@ -233,45 +232,50 @@ export default function SpeechToText() {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             disabled={isTranscribing}
-            animate={isRecording ? { boxShadow: ['0 0 0 0 rgba(239, 68, 68, 0.7)', '0 0 0 20px rgba(239, 68, 68, 0)'] } : {}}
+            animate={isRecording ? { 
+              boxShadow: [
+                '0 0 0 0 rgba(239, 68, 68, 0.7)', 
+                '0 0 0 20px rgba(239, 68, 68, 0)'
+              ] 
+            } : {}}
             transition={isRecording ? { duration: 1.5, repeat: Infinity } : {}}
           >
             {isRecording ? <StopIcon /> : <MicIcon />}
           </motion.button>
 
-          {/* Duration */}
-          <AnimatePresence>
-            {isRecording && (
+          {/* Duration/Status */}
+          <AnimatePresence mode="wait">
+            {isRecording ? (
               <motion.div
+                key="recording"
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="text-3xl font-mono font-bold text-gray-700 dark:text-gray-300 tabular-nums"
+                className="text-3xl font-mono font-bold text-red-600 dark:text-red-400 tabular-nums"
               >
                 {formatDuration(duration)}
               </motion.div>
+            ) : audioBlob ? (
+              <motion.p
+                key="ready"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-sm font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-2"
+              >
+                <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                Audio ready - click to transcribe
+              </motion.p>
+            ) : (
+              <motion.p
+                key="idle"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-sm font-medium text-gray-600 dark:text-gray-400"
+              >
+                Click microphone to start recording
+              </motion.p>
             )}
           </AnimatePresence>
-
-          {/* Status Text */}
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-sm font-medium text-gray-600 dark:text-gray-400"
-          >
-            {isRecording ? (
-              <span className="flex items-center gap-2">
-                <motion.span
-                  animate={{ scale: [1, 1.2, 1] }}
-                  transition={{ duration: 1, repeat: Infinity }}
-                  className="w-2 h-2 bg-red-500 rounded-full"
-                />
-                Recording - language will be auto-detected...
-              </span>
-            ) : (
-              'Click to start recording in any language'
-            )}
-          </motion.p>
         </div>
 
         {/* Transcribe Button */}
@@ -291,31 +295,51 @@ export default function SpeechToText() {
                 {isTranscribing ? (
                   <>
                     <LoadingSpinner type="pulse" size="sm" color="#ffffff" />
-                    <span>Detecting language & transcribing...</span>
+                    <div className="flex flex-col items-start">
+                      <span>Transcribing... {Math.round(progress)}%</span>
+                      {timeEstimate && (
+                        <span className="text-xs opacity-75">{timeEstimate}</span>
+                      )}
+                    </div>
                   </>
                 ) : (
                   <>
                     <SendIcon />
-                    <span>Transcribe Audio (Auto-Detect Language)</span>
+                    <span>Transcribe with Auto Language Detection</span>
                   </>
                 )}
               </button>
+              
+              {/* Progress Bar */}
+              {isTranscribing && (
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${progress}%` }}
+                  className="h-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full mt-2"
+                  transition={{ duration: 0.3 }}
+                />
+              )}
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
-      {/* Detected Language Badge */}
+      {/* Language Detection Badge */}
       <AnimatePresence>
         {detectedLanguage && (
           <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
             className="flex justify-center"
           >
-            <div className="inline-flex items-center gap-3 px-5 py-3 glass rounded-2xl shadow-lg border border-emerald-200/50 dark:border-emerald-700/50">
-              <GlobeIcon />
+            <div className="inline-flex items-center gap-3 px-6 py-3 glass rounded-2xl shadow-lg border border-emerald-200/50 dark:border-emerald-700/50">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+              >
+                <SparkleIcon className="text-emerald-600 dark:text-emerald-400" />
+              </motion.div>
               <div className="text-left">
                 <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
                   Detected Language
@@ -324,7 +348,7 @@ export default function SpeechToText() {
                   {detectedLanguage.name} ({detectedLanguage.native_name})
                 </p>
               </div>
-              <div className="flex items-center gap-1 px-2 py-1 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
+              <div className="flex items-center gap-1 px-3 py-1 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
                 <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300">
                   {(detectedLanguage.confidence * 100).toFixed(0)}%
                 </span>
@@ -338,11 +362,10 @@ export default function SpeechToText() {
       <AnimatePresence mode="wait">
         {transcribedText && (
           <motion.div
-            key="transcription-result"
+            key="result"
             initial={{ opacity: 0, y: 30, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -30, scale: 0.9 }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
             className="glass rounded-3xl shadow-xl p-8 border border-gray-200/50 dark:border-slate-700/50"
           >
             <div className="flex items-center justify-between mb-6">
@@ -365,18 +388,18 @@ export default function SpeechToText() {
                   className="p-2.5 glass text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-700 transition-all border border-gray-200/50 dark:border-slate-700/50"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  title="Copy to clipboard"
+                  title="Copy"
                 >
                   <CopyIcon />
                 </motion.button>
                 <motion.button
                   onClick={handleClear}
-                  className="p-2.5 bg-gradient-to-r from-red-50 to-pink-50 dark:from-red-900/20 dark:to-pink-900/20 text-red-600 dark:text-red-400 rounded-xl hover:shadow-lg transition-all border border-red-200/50 dark:border-red-700/50"
+                  className="p-2.5 bg-gradient-to-r from-red-50 to-pink-50 dark:from-red-900/20 dark:to-pink-900/20 text-red-600 dark:text-red-400 rounded-xl hover:shadow-lg transition-all"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   title="Clear"
                 >
-                  <TrashIcon />
+                  🗑️
                 </motion.button>
               </div>
             </div>
@@ -385,25 +408,12 @@ export default function SpeechToText() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2 }}
-              className="p-6 glass rounded-2xl min-h-[120px] max-h-[400px] overflow-y-auto border border-gray-200/50 dark:border-slate-700/50 custom-scrollbar"
+              className="p-6 glass rounded-2xl min-h-[120px] max-h-[400px] overflow-y-auto border border-gray-200/50 dark:border-slate-700/50"
             >
-              <p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed text-lg font-light">
+              <p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed text-lg">
                 {transcribedText}
               </p>
             </motion.div>
-
-            <motion.button
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              onClick={handleUseText}
-              className="w-full mt-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-2xl font-semibold transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
-              whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.99 }}
-            >
-              <SendIcon />
-              <span>Use for Text-to-Speech</span>
-            </motion.button>
           </motion.div>
         )}
       </AnimatePresence>
