@@ -10,6 +10,7 @@ export default function AudioPlayer({ audioUrl, filename = 'audio.mp3' }) {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.8);
+  const [showVolume, setShowVolume] = useState(false);
   const audioRef = useRef(null);
 
   useEffect(() => {
@@ -84,43 +85,46 @@ export default function AudioPlayer({ audioUrl, filename = 'audio.mp3' }) {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="relative w-full max-w-md bg-[#191414] rounded-xl p-4 shadow-2xl"
+      className="relative w-full max-w-md bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-xl border border-gray-200 dark:border-slate-700"
     >
       <audio ref={audioRef} />
 
-      {/* Top Section */}
-      <div className="flex items-center gap-3 mb-4">
-        <div className="relative w-12 h-12 bg-[#d2d2d2] rounded-md flex items-center justify-center overflow-hidden">
+      {/* Header with Album Art and Info */}
+      <div className="flex items-center gap-4 mb-6">
+        <div className="relative w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center overflow-hidden shadow-lg">
           {isPlaying && (
-            <div className="flex gap-0.5 items-center justify-center">
-              {[0, 1, 2, 3, 4].map((i) => (
+            <div className="flex gap-1 items-center justify-center">
+              {[0, 1, 2, 3].map((i) => (
                 <motion.div
                   key={i}
-                  className="w-0.5 bg-[#1db954] rounded-full"
+                  className="w-1 bg-white rounded-full"
                   animate={{
-                    height: ['20%', '60%', '90%', '60%', '20%'],
+                    height: ['12px', '24px', '12px'],
                   }}
                   transition={{
-                    duration: 1,
+                    duration: 0.8,
                     repeat: Infinity,
                     ease: 'easeInOut',
                     delay: i * 0.1,
                   }}
-                  style={{ height: '20px' }}
                 />
               ))}
             </div>
           )}
           {!isPlaying && (
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="#1db954">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="white">
               <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
             </svg>
           )}
         </div>
         
-        <div className="flex-1">
-          <p className="text-white text-lg font-bold">Audio Generated</p>
-          <p className="text-white text-xs font-medium opacity-80">Voice AI</p>
+        <div className="flex-1 min-w-0">
+          <p className="text-gray-900 dark:text-white text-lg font-bold truncate">
+            Audio Generated
+          </p>
+          <p className="text-gray-500 dark:text-gray-400 text-sm font-medium">
+            Voice AI
+          </p>
         </div>
       </div>
 
@@ -128,88 +132,107 @@ export default function AudioPlayer({ audioUrl, filename = 'audio.mp3' }) {
       <div className="mb-4">
         <div
           onClick={handleSeek}
-          className="w-full h-1.5 bg-[#5e5e5e] rounded-full cursor-pointer relative"
+          className="w-full h-2 bg-gray-200 dark:bg-slate-700 rounded-full cursor-pointer relative group"
         >
           <motion.div
-            className="h-full bg-[#1db954] rounded-full relative"
+            className="h-full bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full relative"
             style={{ width: `${progress}%` }}
           >
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-lg" />
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity" />
           </motion.div>
+        </div>
+        
+        {/* Time Display */}
+        <div className="flex justify-between mt-2">
+          <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+            {formatDuration(currentTime)}
+          </span>
+          <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+            {formatDuration(duration)}
+          </span>
         </div>
       </div>
 
       {/* Controls */}
-      <div className="flex items-center justify-center gap-4 mb-3">
-        <svg 
-          onClick={handleDownload}
-          className="w-6 h-6 text-white cursor-pointer hover:text-[#1db954] transition-colors" 
-          viewBox="0 0 24 24" 
-          fill="currentColor"
-        >
-          <path clipRule="evenodd" d="M12 21.6a9.6 9.6 0 1 0 0-19.2 9.6 9.6 0 0 0 0 19.2Zm.848-12.352a1.2 1.2 0 0 0-1.696-1.696l-3.6 3.6a1.2 1.2 0 0 0 0 1.696l3.6 3.6a1.2 1.2 0 0 0 1.696-1.696L11.297 13.2H15.6a1.2 1.2 0 1 0 0-2.4h-4.303l1.551-1.552Z" fillRule="evenodd"></path>
-        </svg>
+      <div className="flex items-center justify-between">
+        {/* Volume Control */}
+        <div className="relative">
+          <button
+            onClick={() => setShowVolume(!showVolume)}
+            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+            title="Volume"
+          >
+            <svg 
+              className="w-5 h-5 text-gray-700 dark:text-gray-300" 
+              viewBox="0 0 24 24" 
+              fill="currentColor"
+            >
+              <path d="M11.26 3.691A1.2 1.2 0 0 1 12 4.8v14.4a1.199 1.199 0 0 1-2.048.848L5.503 15.6H2.4a1.2 1.2 0 0 1-1.2-1.2V9.6a1.2 1.2 0 0 1 1.2-1.2h3.103l4.449-4.448a1.2 1.2 0 0 1 1.308-.26Zm6.328-.176a1.2 1.2 0 0 1 1.697 0A11.967 11.967 0 0 1 22.8 12a11.966 11.966 0 0 1-3.515 8.485 1.2 1.2 0 0 1-1.697-1.697A9.563 9.563 0 0 0 20.4 12a9.565 9.565 0 0 0-2.812-6.788 1.2 1.2 0 0 1 0-1.697Z"/>
+            </svg>
+          </button>
+          
+          {/* Volume Slider */}
+          {showVolume && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-white dark:bg-slate-700 rounded-lg p-3 shadow-xl border border-gray-200 dark:border-slate-600"
+            >
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={volume}
+                onChange={handleVolumeChange}
+                className="w-24 h-2 accent-indigo-500"
+                style={{
+                  WebkitAppearance: 'none',
+                  background: `linear-gradient(to right, #6366f1 0%, #6366f1 ${volume * 100}%, #d1d5db ${volume * 100}%, #d1d5db 100%)`,
+                  borderRadius: '4px',
+                }}
+              />
+            </motion.div>
+          )}
+        </div>
 
+        {/* Play/Pause Button */}
         <button
           onClick={togglePlay}
-          className="w-12 h-12 bg-white hover:scale-105 transition-transform rounded-full flex items-center justify-center"
+          className="w-14 h-14 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
         >
           {isPlaying ? (
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="#191414">
-              <rect x="6" y="4" width="4" height="16"/>
-              <rect x="14" y="4" width="4" height="16"/>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+              <rect x="6" y="4" width="4" height="16" rx="2"/>
+              <rect x="14" y="4" width="4" height="16" rx="2"/>
             </svg>
           ) : (
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="#191414">
-              <polygon points="5 3 19 12 5 21 5 3"/>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+              <path d="M8 5v14l11-7z"/>
             </svg>
           )}
         </button>
 
-        <svg 
-          className="w-6 h-6 text-white cursor-pointer hover:text-[#1db954] transition-colors" 
-          viewBox="0 0 24 24" 
-          fill="currentColor"
+        {/* Download Button */}
+        <button
+          onClick={handleDownload}
+          className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+          title="Download"
         >
-          <path clipRule="evenodd" d="M12 21.6a9.6 9.6 0 1 0 0-19.2 9.6 9.6 0 0 0 0 19.2Zm4.448-10.448-3.6-3.6a1.2 1.2 0 0 0-1.696 1.696l1.551 1.552H8.4a1.2 1.2 0 1 0 0 2.4h4.303l-1.551 1.552a1.2 1.2 0 1 0 1.696 1.696l3.6-3.6a1.2 1.2 0 0 0 0-1.696Z" fillRule="evenodd"></path>
-        </svg>
-      </div>
-
-      {/* Time Display */}
-      <div className="flex justify-between text-white text-xs font-medium">
-        <span>{formatDuration(currentTime)}</span>
-        <span>{formatDuration(duration)}</span>
-      </div>
-
-      {/* Volume Control (Hidden by default, shown on hover) */}
-      <div className="absolute top-4 right-4 group">
-        <svg 
-          className="w-6 h-6 text-white cursor-pointer hover:text-[#1db954] transition-colors" 
-          viewBox="0 0 24 24" 
-          fill="currentColor"
-        >
-          <path clipRule="evenodd" d="M11.26 3.691A1.2 1.2 0 0 1 12 4.8v14.4a1.199 1.199 0 0 1-2.048.848L5.503 15.6H2.4a1.2 1.2 0 0 1-1.2-1.2V9.6a1.2 1.2 0 0 1 1.2-1.2h3.103l4.449-4.448a1.2 1.2 0 0 1 1.308-.26Zm6.328-.176a1.2 1.2 0 0 1 1.697 0A11.967 11.967 0 0 1 22.8 12a11.966 11.966 0 0 1-3.515 8.485 1.2 1.2 0 0 1-1.697-1.697A9.563 9.563 0 0 0 20.4 12a9.565 9.565 0 0 0-2.812-6.788 1.2 1.2 0 0 1 0-1.697Z" fillRule="evenodd"></path>
-        </svg>
-        
-        <div className="absolute right-0 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <div className="bg-[#282828] rounded-lg p-3 shadow-xl">
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.01"
-              value={volume}
-              onChange={handleVolumeChange}
-              className="w-24 accent-[#1db954]"
-              style={{
-                WebkitAppearance: 'none',
-                height: '4px',
-                background: `linear-gradient(to right, #1db954 0%, #1db954 ${volume * 100}%, #5e5e5e ${volume * 100}%, #5e5e5e 100%)`,
-                borderRadius: '2px',
-              }}
-            />
-          </div>
-        </div>
+          <svg 
+            className="w-5 h-5 text-gray-700 dark:text-gray-300" 
+            viewBox="0 0 24 24" 
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+        </button>
       </div>
     </motion.div>
   );
