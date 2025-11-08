@@ -1,4 +1,4 @@
-// app/components/SpeechToText.jsx - OPTIMIZED VERSION
+// app/components/SpeechToText.jsx - WITH MANUAL LANGUAGE SELECTION
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -39,18 +39,38 @@ const SendIcon = () => (
   </svg>
 );
 
-const SparkleIcon = () => (
+const GlobeIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M12 2L14 8L20 10L14 12L12 18L10 12L4 10L10 8L12 2Z"/>
+    <circle cx="12" cy="12" r="10"/>
+    <line x1="2" y1="12" x2="22" y2="12"/>
+    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
   </svg>
 );
+
+// LANGUAGE OPTIONS FOR MANUAL SELECTION
+const STT_LANGUAGES = [
+  { code: 'en', name: 'English', native: 'English', flag: '🇬🇧' },
+  { code: 'hi', name: 'Hindi', native: 'हिन्दी', flag: '🇮🇳' },
+  { code: 'kn', name: 'Kannada', native: 'ಕನ್ನಡ', flag: '🇮🇳' },
+  { code: 'ta', name: 'Tamil', native: 'தமிழ்', flag: '🇮🇳' },
+  { code: 'te', name: 'Telugu', native: 'తెలుగు', flag: '🇮🇳' },
+  { code: 'ml', name: 'Malayalam', native: 'മലയാളം', flag: '🇮🇳' },
+  { code: 'mr', name: 'Marathi', native: 'मराठी', flag: '🇮🇳' },
+  { code: 'gu', name: 'Gujarati', native: 'ગુજરાતી', flag: '🇮🇳' },
+  { code: 'bn', name: 'Bengali', native: 'বাংলা', flag: '🇮🇳' },
+  { code: 'pa', name: 'Punjabi', native: 'ਪੰਜਾਬੀ', flag: '🇮🇳' },
+  { code: 'ur', name: 'Urdu', native: 'اردو', flag: '🇵🇰' },
+  { code: 'or', name: 'Odia', native: 'ଓଡ଼ିଆ', flag: '🇮🇳' },
+  { code: 'as', name: 'Assamese', native: 'অসমীয়া', flag: '🇮🇳' },
+];
 
 export default function SpeechToText() {
   const [transcribedText, setTranscribedText] = useState('');
   const [detectedLanguage, setDetectedLanguage] = useState(null);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [timeEstimate, setTimeEstimate] = useState('');
+  const [selectedLanguage, setSelectedLanguage] = useState('hi'); // Default to Hindi
+  const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
   
   const {
     isRecording,
@@ -62,7 +82,6 @@ export default function SpeechToText() {
     resetRecording,
   } = useAudioRecorder();
 
-  // Progress estimation
   useEffect(() => {
     if (isTranscribing) {
       const interval = setInterval(() => {
@@ -70,7 +89,7 @@ export default function SpeechToText() {
           if (prev >= 90) return prev;
           return prev + Math.random() * 10;
         });
-      }, 500);
+      }, 300);
       
       return () => clearInterval(interval);
     }
@@ -82,7 +101,7 @@ export default function SpeechToText() {
       setDetectedLanguage(null);
       setProgress(0);
       await startRecording();
-      toast.success('🎙️ Recording - speak clearly in any language', { duration: 2000 });
+      toast.success(`🎙️ Recording in ${STT_LANGUAGES.find(l => l.code === selectedLanguage)?.name}`, { duration: 2000 });
     } catch (error) {
       toast.error(error.message || 'Failed to start recording');
     }
@@ -105,27 +124,23 @@ export default function SpeechToText() {
     const startTime = Date.now();
     
     try {
-      console.log('🎙️ Starting transcription...');
+      console.log('🎙️ Starting transcription with language:', selectedLanguage);
       
       setProgress(30);
-      setTimeEstimate('Processing audio...');
       
       const audioFile = new File([audioBlob], 'recording.webm', { 
         type: 'audio/webm' 
       });
       
       setProgress(50);
-      setTimeEstimate('Detecting language...');
       
-      // Call optimized STT API
-      const result = await speechToText(audioFile);
+      // Call STT API with manual language selection
+      const result = await speechToText(audioFile, selectedLanguage);
       
       setProgress(80);
-      setTimeEstimate('Finalizing...');
       
       console.log('✅ Response:', result);
       
-      // Extract data
       const text = result?.data?.text || result?.text || '';
       const langInfo = result?.data?.detected_language || result?.detected_language;
       
@@ -142,7 +157,7 @@ export default function SpeechToText() {
       toast.success(
         <div>
           <div className="font-bold">✅ Transcribed in {elapsed}s!</div>
-          <div className="text-sm">{langInfo?.name || 'Language detected'}</div>
+          <div className="text-sm">{langInfo?.name || 'Success'}</div>
         </div>,
         { duration: 3000 }
       );
@@ -159,7 +174,6 @@ export default function SpeechToText() {
       );
     } finally {
       setIsTranscribing(false);
-      setTimeEstimate('');
     }
   };
 
@@ -187,22 +201,98 @@ export default function SpeechToText() {
       {/* Main Recording Card */}
       <div className="glass rounded-3xl shadow-xl p-8 border border-gray-200/50 dark:border-slate-700/50">
         {/* Header */}
-        <div className="flex items-center justify-center mb-8">
-          <motion.div
-            animate={{ rotate: [0, 10, -10, 0] }}
-            transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
-            className="w-10 h-10 bg-gradient-to-br from-red-100 to-pink-100 dark:from-red-900/30 dark:to-pink-900/30 rounded-xl flex items-center justify-center mr-3"
-          >
-            <MicIcon />
-          </motion.div>
-          <div>
-            <h2 className="text-2xl font-bold bg-gradient-to-r from-red-600 to-pink-600 dark:from-red-400 dark:to-pink-400 bg-clip-text text-transparent">
-              Speech to Text
-            </h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
-              <SparkleIcon className="w-3 h-3" />
-              Auto language detection - just speak naturally
-            </p>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center">
+            <motion.div
+              animate={{ rotate: [0, 10, -10, 0] }}
+              transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+              className="w-10 h-10 bg-gradient-to-br from-red-100 to-pink-100 dark:from-red-900/30 dark:to-pink-900/30 rounded-xl flex items-center justify-center mr-3"
+            >
+              <MicIcon />
+            </motion.div>
+            <div>
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-red-600 to-pink-600 dark:from-red-400 dark:to-pink-400 bg-clip-text text-transparent">
+                Speech to Text
+              </h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Select your language and speak
+              </p>
+            </div>
+          </div>
+
+          {/* Language Selector */}
+          <div className="relative">
+            <motion.button
+              onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
+              className="flex items-center gap-2 px-4 py-2 glass rounded-xl border border-indigo-200/50 dark:border-indigo-700/50 hover:shadow-lg transition-all"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <span className="text-2xl">{STT_LANGUAGES.find(l => l.code === selectedLanguage)?.flag}</span>
+              <div className="text-left">
+                <p className="text-xs font-semibold text-gray-900 dark:text-white">
+                  {STT_LANGUAGES.find(l => l.code === selectedLanguage)?.name}
+                </p>
+                <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                  {STT_LANGUAGES.find(l => l.code === selectedLanguage)?.native}
+                </p>
+              </div>
+              <svg className={`w-4 h-4 transition-transform ${showLanguageDropdown ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </motion.button>
+
+            <AnimatePresence>
+              {showLanguageDropdown && (
+                <>
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-40"
+                    onClick={() => setShowLanguageDropdown(false)}
+                  />
+                  <motion.div
+                    initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                    className="absolute top-full right-0 mt-2 w-64 glass rounded-2xl shadow-2xl border border-gray-200/50 dark:border-slate-700/50 overflow-hidden z-50 max-h-80 overflow-y-auto"
+                  >
+                    {STT_LANGUAGES.map((lang) => (
+                      <motion.button
+                        key={lang.code}
+                        onClick={() => {
+                          setSelectedLanguage(lang.code);
+                          setShowLanguageDropdown(false);
+                          toast.success(`Selected: ${lang.name}`);
+                        }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-100 dark:hover:bg-slate-700 transition-all ${
+                          selectedLanguage === lang.code ? 'bg-indigo-50 dark:bg-indigo-900/30' : ''
+                        }`}
+                        whileHover={{ x: 2 }}
+                      >
+                        <span className="text-2xl">{lang.flag}</span>
+                        <div className="flex-1 text-left">
+                          <p className={`text-sm font-semibold ${
+                            selectedLanguage === lang.code ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-900 dark:text-white'
+                          }`}>
+                            {lang.name}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {lang.native}
+                          </p>
+                        </div>
+                        {selectedLanguage === lang.code && (
+                          <svg className="w-5 h-5 text-indigo-600 dark:text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="20 6 9 17 4 12"/>
+                          </svg>
+                        )}
+                      </motion.button>
+                    ))}
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
           </div>
         </div>
 
@@ -263,7 +353,7 @@ export default function SpeechToText() {
                 className="text-sm font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-2"
               >
                 <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                Audio ready - click to transcribe
+                Ready - click to transcribe in {STT_LANGUAGES.find(l => l.code === selectedLanguage)?.name}
               </motion.p>
             ) : (
               <motion.p
@@ -272,7 +362,7 @@ export default function SpeechToText() {
                 animate={{ opacity: 1 }}
                 className="text-sm font-medium text-gray-600 dark:text-gray-400"
               >
-                Click microphone to start recording
+                Click microphone to record in {STT_LANGUAGES.find(l => l.code === selectedLanguage)?.name}
               </motion.p>
             )}
           </AnimatePresence>
@@ -297,20 +387,16 @@ export default function SpeechToText() {
                     <LoadingSpinner type="pulse" size="sm" color="#ffffff" />
                     <div className="flex flex-col items-start">
                       <span>Transcribing... {Math.round(progress)}%</span>
-                      {timeEstimate && (
-                        <span className="text-xs opacity-75">{timeEstimate}</span>
-                      )}
                     </div>
                   </>
                 ) : (
                   <>
                     <SendIcon />
-                    <span>Transcribe with Auto Language Detection</span>
+                    <span>Transcribe in {STT_LANGUAGES.find(l => l.code === selectedLanguage)?.name}</span>
                   </>
                 )}
               </button>
               
-              {/* Progress Bar */}
               {isTranscribing && (
                 <motion.div
                   initial={{ width: 0 }}
@@ -334,15 +420,10 @@ export default function SpeechToText() {
             className="flex justify-center"
           >
             <div className="inline-flex items-center gap-3 px-6 py-3 glass rounded-2xl shadow-lg border border-emerald-200/50 dark:border-emerald-700/50">
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-              >
-                <SparkleIcon className="text-emerald-600 dark:text-emerald-400" />
-              </motion.div>
+              <GlobeIcon />
               <div className="text-left">
                 <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                  Detected Language
+                  Transcribed Language
                 </p>
                 <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
                   {detectedLanguage.name} ({detectedLanguage.native_name})

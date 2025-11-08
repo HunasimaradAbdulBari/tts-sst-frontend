@@ -1,10 +1,13 @@
+// app/lib/apiClient.js - Updated with manual language support
 import axios from 'axios';
 import { API_BASE_URL, API_ENDPOINTS, ERROR_MESSAGES } from './constants';
 
-// Create axios instance - calls Next.js API routes
+// Create axios instance - NO TIMEOUT
 const apiClient = axios.create({
   baseURL: '/',
-  timeout: 60000,
+  timeout: 0, // NO TIMEOUT
+  maxContentLength: Infinity,
+  maxBodyLength: Infinity,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -47,12 +50,12 @@ apiClient.interceptors.response.use(
 
 /**
  * Text to Speech API call - NO LANGUAGE PARAMETER (Auto-Detection)
+ * NO LENGTH LIMIT
  */
 export const textToSpeech = async (text) => {
   try {
     const response = await apiClient.post('/api/tts', {
       text
-      // Language removed - auto-detection in backend
     });
     return response.data;
   } catch (error) {
@@ -62,18 +65,26 @@ export const textToSpeech = async (text) => {
 };
 
 /**
- * Speech to Text API call - NO LANGUAGE PARAMETER (Auto-Detection)
+ * Speech to Text API call - WITH MANUAL LANGUAGE SELECTION
  */
-export const speechToText = async (audioBlob) => {
+export const speechToText = async (audioBlob, language = null) => {
   try {
     const formData = new FormData();
     formData.append('audio', audioBlob, 'recording.webm');
-    // Language removed - auto-detection in backend
+    
+    // Add manual language selection if provided
+    if (language) {
+      formData.append('language', language);
+      console.log(`🎯 [API Client] Manual language selected: ${language}`);
+    }
     
     const response = await apiClient.post('/api/stt', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
+      timeout: 0, // NO TIMEOUT
+      maxContentLength: Infinity,
+      maxBodyLength: Infinity,
     });
     return response.data;
   } catch (error) {

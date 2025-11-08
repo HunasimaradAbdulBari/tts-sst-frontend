@@ -1,9 +1,9 @@
+// app/components/TextToSpeech.jsx - NO LENGTH LIMIT
 'use client';
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { textToSpeech } from '../lib/apiClient';
-import { validateText } from '../lib/validators';
 import AudioPlayer from './AudioPlayer';
 import LoadingSpinner from './LoadingSpinner';
 import toast from 'react-hot-toast';
@@ -38,9 +38,9 @@ export default function TextToSpeech() {
   const [isGenerating, setIsGenerating] = useState(false);
 
   const handleGenerate = async () => {
-    const validation = validateText(text);
-    if (!validation.valid) {
-      toast.error(validation.errors[0]);
+    // REMOVED LENGTH VALIDATION - NO LIMIT
+    if (!text || text.trim().length === 0) {
+      toast.error('Please enter some text');
       return;
     }
 
@@ -50,11 +50,11 @@ export default function TextToSpeech() {
     
     try {
       console.log('='.repeat(60));
-      console.log('🔊 [TTS Component] Starting generation with AUTO-DETECTION...');
-      console.log('Text:', text.substring(0, 50) + '...');
+      console.log('🔊 [TTS Component] Starting generation (NO LIMIT)...');
+      console.log('Text length:', text.length);
       console.log('='.repeat(60));
       
-      const result = await textToSpeech(text); // NO language parameter
+      const result = await textToSpeech(text);
       
       console.log('✅ [TTS Component] Response received:');
       console.log(JSON.stringify(result, null, 2));
@@ -79,7 +79,6 @@ export default function TextToSpeech() {
         }
       }
       
-      // Extract detected language info
       extractedLanguage = result?.data?.detected_language || 
                          result?.detected_language;
       
@@ -117,9 +116,6 @@ export default function TextToSpeech() {
     toast.success('🗑️ Cleared', { duration: 2000 });
   };
 
-  const remainingChars = 5000 - text.length;
-  const charPercentage = (text.length / 5000) * 100;
-
   return (
     <div className="w-full max-w-3xl mx-auto">
       {/* Input Card */}
@@ -135,7 +131,7 @@ export default function TextToSpeech() {
               Enter Your Text
             </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Type in any language - we'll detect it automatically
+              Type in any language - we'll detect it automatically • NO LENGTH LIMIT
             </p>
           </div>
           <AnimatePresence>
@@ -156,49 +152,20 @@ export default function TextToSpeech() {
           </AnimatePresence>
         </div>
 
-        {/* Text Area */}
+        {/* Text Area - NO LENGTH LIMIT */}
         <div className="relative">
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Type or paste your text in any Indian language..."
+            placeholder="Type or paste your text in any Indian language... (unlimited length)"
             className="w-full h-48 p-5 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-900 dark:to-slate-800 rounded-2xl border-2 border-gray-200 dark:border-slate-700 focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/20 outline-none resize-none text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 transition-all duration-300 text-lg font-light leading-relaxed"
-            maxLength={5000}
           />
           
-          {/* Character Count */}
+          {/* Character Count - NO LIMIT WARNING */}
           <div className="absolute bottom-4 right-4">
             <div className="flex items-center gap-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm px-3 py-1.5 rounded-xl shadow-lg border border-gray-200 dark:border-slate-700">
-              <div className="relative w-8 h-8">
-                <svg className="transform -rotate-90 w-8 h-8">
-                  <circle
-                    cx="16"
-                    cy="16"
-                    r="14"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                    fill="none"
-                    className="text-gray-200 dark:text-slate-700"
-                  />
-                  <circle
-                    cx="16"
-                    cy="16"
-                    r="14"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                    fill="none"
-                    strokeDasharray={`${2 * Math.PI * 14}`}
-                    strokeDashoffset={`${2 * Math.PI * 14 * (1 - charPercentage / 100)}`}
-                    className={`transition-all duration-300 ${
-                      charPercentage > 90 ? 'text-red-500' : charPercentage > 70 ? 'text-yellow-500' : 'text-indigo-500'
-                    }`}
-                  />
-                </svg>
-              </div>
-              <span className={`text-xs font-semibold ${
-                charPercentage > 90 ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'
-              }`}>
-                {remainingChars}
+              <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">
+                {text.length.toLocaleString()} chars
               </span>
             </div>
           </div>
