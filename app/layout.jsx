@@ -4,7 +4,6 @@ import './styles/animations.css';
 import { ThemeProvider } from './context/ThemeContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { Toaster } from 'react-hot-toast';
-import Header from './components/Header';
 import Footer from './components/Footer';
 import ErrorBoundary from './components/ErrorBoundary';
 
@@ -16,10 +15,8 @@ const inter = Inter({
 });
 
 export const metadata = {
-  title: 'Multilingual Speech AI - Professional Voice Recognition Platform',
-  description: 'Enterprise-grade multilingual Text-to-Speech and Speech-to-Text platform supporting English, Hindi, Kannada, and Urdu with advanced AI capabilities',
-  keywords: 'speech to text, text to speech, multilingual, voice recognition, audio transcription, AI, machine learning',
-  authors: [{ name: 'Your Name' }],
+  title: 'Voice AI - Professional Speech Platform',
+  description: 'Professional multilingual Text-to-Speech and Speech-to-Text platform',
   viewport: 'width=device-width, initial-scale=1',
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#ffffff' },
@@ -34,11 +31,8 @@ export default function RootLayout({ children }) {
         <ErrorBoundary>
           <ThemeProvider>
             <LanguageProvider>
-              <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
-                <Header />
-                <main className="pt-20 pb-8 px-4">
-                  {children}
-                </main>
+              <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+                {children}
                 <Footer />
               </div>
               <Toaster
@@ -49,16 +43,16 @@ export default function RootLayout({ children }) {
                     background: '#1e293b',
                     color: '#f1f5f9',
                     border: '1px solid #334155',
+                    borderRadius: '0.75rem',
+                    padding: '1rem',
                   },
                   success: {
-                    duration: 3000,
                     iconTheme: {
                       primary: '#10b981',
                       secondary: '#ffffff',
                     },
                   },
                   error: {
-                    duration: 4000,
                     iconTheme: {
                       primary: '#ef4444',
                       secondary: '#ffffff',

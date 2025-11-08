@@ -27,10 +27,10 @@ export default function LoadingSpinner({
               style={{
                 width: dotSize,
                 height: dotSize,
-                background: `linear-gradient(135deg, ${color}, #A855F7)`,
+                backgroundColor: color,
               }}
               animate={{
-                scale: [1, 1.5, 1],
+                scale: [1, 1.3, 1],
                 opacity: [0.6, 1, 0.6],
               }}
               transition={{
@@ -81,34 +81,5 @@ export default function LoadingSpinner({
     );
   }
 
-  return (
-    <div className="flex flex-col items-center justify-center gap-3">
-      <div className="flex gap-2">
-        {[0, 1, 2].map((index) => (
-          <motion.div
-            key={index}
-            className="rounded-full"
-            style={{
-              width: dotSize,
-              height: dotSize,
-              background: `linear-gradient(135deg, ${color}, #A855F7)`,
-            }}
-            animate={{
-              y: ['0%', '-100%', '0%'],
-            }}
-            transition={{
-              duration: 0.6,
-              repeat: Infinity,
-              delay: index * 0.1,
-            }}
-          />
-        ))}
-      </div>
-      {text && (
-        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-          {text}
-        </p>
-      )}
-    </div>
-  );
+  return null;
 }

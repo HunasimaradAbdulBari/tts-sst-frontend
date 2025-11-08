@@ -1,4 +1,3 @@
-// app/components/TextToSpeech.jsx - NO LENGTH LIMIT
 'use client';
 
 import { useState } from 'react';
@@ -8,29 +7,6 @@ import AudioPlayer from './AudioPlayer';
 import LoadingSpinner from './LoadingSpinner';
 import toast from 'react-hot-toast';
 
-const SpeakerIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-    <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
-    <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
-  </svg>
-);
-
-const TrashIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <polyline points="3 6 5 6 21 6"/>
-    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-  </svg>
-);
-
-const GlobeIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <circle cx="12" cy="12" r="10"/>
-    <line x1="2" y1="12" x2="22" y2="12"/>
-    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-  </svg>
-);
-
 export default function TextToSpeech() {
   const [text, setText] = useState('');
   const [audioUrl, setAudioUrl] = useState(null);
@@ -38,9 +14,8 @@ export default function TextToSpeech() {
   const [isGenerating, setIsGenerating] = useState(false);
 
   const handleGenerate = async () => {
-    // REMOVED LENGTH VALIDATION - NO LIMIT
     if (!text || text.trim().length === 0) {
-      toast.error('Please enter some text');
+      toast.error('Please enter text');
       return;
     }
 
@@ -49,60 +24,26 @@ export default function TextToSpeech() {
     setDetectedLanguage(null);
     
     try {
-      console.log('='.repeat(60));
-      console.log('🔊 [TTS Component] Starting generation (NO LIMIT)...');
-      console.log('Text length:', text.length);
-      console.log('='.repeat(60));
-      
       const result = await textToSpeech(text);
       
-      console.log('✅ [TTS Component] Response received:');
-      console.log(JSON.stringify(result, null, 2));
+      const extractedAudioUrl = result?.data?.audio_url || 
+                               result?.audio_url ||
+                               result?.data?.audioUrl;
       
-      // Extract audio URL and detected language
-      let extractedAudioUrl = null;
-      let extractedLanguage = null;
-      
-      const possiblePaths = [
-        result?.data?.audio_url,
-        result?.data?.audioUrl,
-        result?.data?.url,
-        result?.audio_url,
-        result?.audioUrl,
-        result?.url,
-      ];
-      
-      for (const path of possiblePaths) {
-        if (path && typeof path === 'string') {
-          extractedAudioUrl = path;
-          break;
-        }
-      }
-      
-      extractedLanguage = result?.data?.detected_language || 
-                         result?.detected_language;
-      
-      console.log('🎵 Extracted URL:', extractedAudioUrl);
-      console.log('🌐 Detected Language:', extractedLanguage);
+      const extractedLanguage = result?.data?.detected_language || 
+                               result?.detected_language;
       
       if (!extractedAudioUrl) {
-        throw new Error('No audio URL received from server');
-      }
-      
-      if (!extractedAudioUrl.startsWith('http')) {
-        throw new Error('Invalid audio URL format');
+        throw new Error('No audio URL received');
       }
       
       setAudioUrl(extractedAudioUrl);
       setDetectedLanguage(extractedLanguage);
       
-      toast.success(
-        `🎵 Audio generated in ${extractedLanguage?.name || 'detected language'}!`,
-        { duration: 3000 }
-      );
+      toast.success(`Generated in ${extractedLanguage?.name || 'detected language'}`);
       
     } catch (error) {
-      console.error('❌ [TTS Component] Error:', error);
+      console.error('TTS Error:', error);
       toast.error(error.message || 'Failed to generate audio');
     } finally {
       setIsGenerating(false);
@@ -113,106 +54,84 @@ export default function TextToSpeech() {
     setText('');
     setAudioUrl(null);
     setDetectedLanguage(null);
-    toast.success('🗑️ Cleared', { duration: 2000 });
   };
 
   return (
-    <div className="w-full max-w-3xl mx-auto">
-      {/* Input Card */}
+    <div className="w-full space-y-6">
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.1 }}
-        className="glass rounded-3xl shadow-2xl p-8 md:p-10 border border-gray-200/50 dark:border-slate-700/50"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-gray-200 dark:border-slate-700 p-8"
       >
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 bg-clip-text text-transparent">
-              Enter Your Text
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+              Enter Text
             </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Type in any language - we'll detect it automatically • NO LENGTH LIMIT
+              Auto language detection enabled
             </p>
           </div>
-          <AnimatePresence>
-            {text && (
-              <motion.button
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                onClick={handleClear}
-                className="p-2.5 bg-gradient-to-r from-red-100 to-pink-100 dark:from-red-900/30 dark:to-pink-900/30 text-red-600 dark:text-red-400 rounded-xl hover:shadow-lg transition-all"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                title="Clear"
-              >
-                <TrashIcon />
-              </motion.button>
-            )}
-          </AnimatePresence>
+          {text && (
+            <button
+              onClick={handleClear}
+              className="px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+            >
+              Clear
+            </button>
+          )}
         </div>
 
-        {/* Text Area - NO LENGTH LIMIT */}
         <div className="relative">
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Type or paste your text in any Indian language... (unlimited length)"
-            className="w-full h-48 p-5 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-900 dark:to-slate-800 rounded-2xl border-2 border-gray-200 dark:border-slate-700 focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/20 outline-none resize-none text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 transition-all duration-300 text-lg font-light leading-relaxed"
+            placeholder="Type your text here..."
+            className="w-full h-48 p-6 bg-gray-50 dark:bg-slate-900 rounded-xl border-2 border-gray-200 dark:border-slate-700 focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/20 outline-none resize-none text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 transition-all text-base leading-relaxed"
           />
           
-          {/* Character Count - NO LIMIT WARNING */}
-          <div className="absolute bottom-4 right-4">
-            <div className="flex items-center gap-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm px-3 py-1.5 rounded-xl shadow-lg border border-gray-200 dark:border-slate-700">
-              <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">
-                {text.length.toLocaleString()} chars
-              </span>
-            </div>
+          <div className="absolute bottom-4 right-4 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700">
+            <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">
+              {text.length.toLocaleString()} chars
+            </span>
           </div>
         </div>
 
-        {/* Generate Button */}
-        <motion.button
+        <button
           onClick={handleGenerate}
           disabled={isGenerating || !text.trim()}
-          className="w-full mt-6 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-2xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl flex items-center justify-center gap-3"
-          whileHover={{ scale: text.trim() ? 1.01 : 1 }}
-          whileTap={{ scale: text.trim() ? 0.99 : 1 }}
+          className="w-full mt-6 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl flex items-center justify-center gap-3"
         >
           {isGenerating ? (
             <>
               <LoadingSpinner type="pulse" size="sm" color="#ffffff" />
-              <span>Detecting language & generating...</span>
+              <span>Generating...</span>
             </>
           ) : (
-            <>
-              <SpeakerIcon />
-              <span>Generate Speech (Auto-Detect Language)</span>
-            </>
+            <span>Generate Speech</span>
           )}
-        </motion.button>
+        </button>
       </motion.div>
 
-      {/* Detected Language Badge */}
       <AnimatePresence>
         {detectedLanguage && (
           <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="mt-4 flex justify-center"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="flex justify-center"
           >
-            <div className="inline-flex items-center gap-3 px-5 py-3 glass rounded-2xl shadow-lg border border-emerald-200/50 dark:border-emerald-700/50">
-              <GlobeIcon />
-              <div className="text-left">
+            <div className="inline-flex items-center gap-3 px-6 py-3 bg-white dark:bg-slate-800 rounded-xl shadow-md border border-emerald-200 dark:border-emerald-700">
+              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+              <div>
                 <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
                   Detected Language
                 </p>
                 <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
-                  {detectedLanguage.name} ({detectedLanguage.native_name})
+                  {detectedLanguage.name}
                 </p>
               </div>
-              <div className="flex items-center gap-1 px-2 py-1 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
+              <div className="px-3 py-1 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
                 <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300">
                   {(detectedLanguage.confidence * 100).toFixed(0)}%
                 </span>
@@ -222,15 +141,13 @@ export default function TextToSpeech() {
         )}
       </AnimatePresence>
 
-      {/* Audio Player */}
-      <AnimatePresence mode="wait">
+      <AnimatePresence>
         {audioUrl && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: -20 }}
-            transition={{ duration: 0.4, ease: "easeOut" }}
-            className="mt-6"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="flex justify-center"
           >
             <AudioPlayer 
               audioUrl={audioUrl} 
