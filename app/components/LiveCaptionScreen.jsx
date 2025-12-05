@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useRouter } from 'next/navigation';
 import { SpeechEngine, isSpeechRecognitionSupported } from '../lib/speechEngine';
 import toast from 'react-hot-toast';
 
@@ -20,7 +21,29 @@ const AVAILABLE_LANGUAGES = [
   { code: 'ur', name: 'Urdu', flag: '🇵🇰' },
 ];
 
+const BackIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <line x1="19" y1="12" x2="5" y2="12"/>
+    <polyline points="12 19 5 12 12 5"/>
+  </svg>
+);
+
+const MicIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
+    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+  </svg>
+);
+
+const StopIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <rect x="6" y="6" width="12" height="12" rx="2"/>
+  </svg>
+);
+
 export default function LiveCaptionScreen() {
+  const router = useRouter();
+  
   // State management
   const [selectedLanguage, setSelectedLanguage] = useState('en');
   const [isListening, setIsListening] = useState(false);
@@ -53,7 +76,6 @@ export default function LiveCaptionScreen() {
 
   /**
    * Handle Start Button Click
-   * Initialize speech engine and start listening
    */
   const handleStart = () => {
     if (!isSupported) {
@@ -62,35 +84,27 @@ export default function LiveCaptionScreen() {
     }
 
     try {
-      // Create new speech engine instance
       const engine = new SpeechEngine();
       
-      // Set up callbacks for speech events
-      
-      // Called with partial/live text as you speak
       engine.onPartialResult = (text) => {
         setLiveText(text);
       };
       
-      // Called when a phrase is finalized
       engine.onFinalResult = (text) => {
         setLiveText(text);
       };
       
-      // Called when recognition ends (either by user or automatically)
       engine.onEnd = (text) => {
         console.log('Recognition ended. Final text:', text);
         setIsListening(false);
         setFinalText(text);
         setLiveText('');
         
-        // Optionally save to backend
         if (text && text.length > 0) {
           saveTranscript(text, selectedLanguage);
         }
       };
       
-      // Called on error
       engine.onError = (error) => {
         console.error('Speech recognition error:', error);
         setIsListening(false);
@@ -104,18 +118,16 @@ export default function LiveCaptionScreen() {
         }
       };
       
-      // Store reference
       speechEngineRef.current = engine;
       
-      // Clear previous text
       setLiveText('');
       setFinalText('');
       
-      // Start listening
       engine.start(selectedLanguage);
       setIsListening(true);
       
-      toast.success(`Started listening in ${AVAILABLE_LANGUAGES.find(l => l.code === selectedLanguage)?.name || 'selected language'}`);
+      const langName = AVAILABLE_LANGUAGES.find(l => l.code === selectedLanguage)?.name || 'selected language';
+      toast.success(`Started listening in ${langName}`);
       
     } catch (error) {
       console.error('Failed to start recognition:', error);
@@ -125,7 +137,6 @@ export default function LiveCaptionScreen() {
 
   /**
    * Handle Stop Button Click
-   * Stop the speech engine
    */
   const handleStop = () => {
     if (speechEngineRef.current) {
@@ -135,8 +146,7 @@ export default function LiveCaptionScreen() {
   };
 
   /**
-   * Save transcript to backend (optional)
-   * This allows you to store transcripts for later retrieval
+   * Save transcript to backend
    */
   const saveTranscript = async (text, language) => {
     if (!text || text.trim().length === 0) return;
@@ -165,7 +175,6 @@ export default function LiveCaptionScreen() {
       
     } catch (error) {
       console.error('Error saving transcript:', error);
-      // Don't show error toast to user - this is optional functionality
     } finally {
       setIsSaving(false);
     }
@@ -173,7 +182,6 @@ export default function LiveCaptionScreen() {
 
   /**
    * Handle Clear Button
-   * Clear all text and reset state
    */
   const handleClear = () => {
     setLiveText('');
@@ -186,7 +194,6 @@ export default function LiveCaptionScreen() {
 
   /**
    * Handle Copy Button
-   * Copy final text to clipboard
    */
   const handleCopy = () => {
     const textToCopy = finalText || liveText;
@@ -194,6 +201,16 @@ export default function LiveCaptionScreen() {
       navigator.clipboard.writeText(textToCopy);
       toast.success('Copied to clipboard');
     }
+  };
+
+  /**
+   * Handle Back Button
+   */
+  const handleBack = () => {
+    if (isListening) {
+      handleStop();
+    }
+    router.push('/');
   };
 
   // Show browser not supported message
@@ -208,11 +225,17 @@ export default function LiveCaptionScreen() {
           <p className="text-gray-600 dark:text-gray-400 mb-4">
             Speech recognition requires a modern browser. Please use:
           </p>
-          <ul className="text-gray-600 dark:text-gray-400 space-y-2">
+          <ul className="text-gray-600 dark:text-gray-400 space-y-2 mb-6">
             <li>• Google Chrome (Desktop/Mobile)</li>
             <li>• Microsoft Edge</li>
             <li>• Safari (macOS/iOS)</li>
           </ul>
+          <button
+            onClick={handleBack}
+            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold transition-colors"
+          >
+            Go Back
+          </button>
         </div>
       </div>
     );
@@ -224,6 +247,15 @@ export default function LiveCaptionScreen() {
       <div className="fixed top-0 left-0 right-0 bg-white dark:bg-slate-800 shadow-md z-50 p-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
           
+          {/* Back Button */}
+          <button
+            onClick={handleBack}
+            className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+          >
+            <BackIcon />
+            <span className="font-medium">Back</span>
+          </button>
+
           {/* Language Selector */}
           <div className="relative">
             <button
@@ -294,10 +326,7 @@ export default function LiveCaptionScreen() {
                 onClick={handleStart}
                 className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-lg font-semibold transition-all shadow-lg"
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
-                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                </svg>
+                <MicIcon />
                 <span>Start</span>
               </button>
             ) : (
@@ -305,9 +334,7 @@ export default function LiveCaptionScreen() {
                 onClick={handleStop}
                 className="flex items-center gap-2 px-6 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-semibold transition-all shadow-lg"
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                  <rect x="6" y="6" width="12" height="12" rx="2"/>
-                </svg>
+                <StopIcon />
                 <span>Stop</span>
               </button>
             )}
@@ -332,7 +359,7 @@ export default function LiveCaptionScreen() {
         </div>
       </div>
 
-      {/* Main Content Area - White Screen with Live Captions */}
+      {/* Main Content Area */}
       <div className="pt-20 pb-8 px-6">
         <div className="max-w-7xl mx-auto">
           
@@ -362,7 +389,7 @@ export default function LiveCaptionScreen() {
             ref={textContainerRef}
             className="min-h-[70vh] max-h-[70vh] overflow-y-auto bg-white dark:bg-slate-900 rounded-2xl p-8 border-2 border-gray-200 dark:border-slate-700"
           >
-            {/* Show live text while listening */}
+            {/* Live text while listening */}
             {isListening && liveText && (
               <motion.div
                 initial={{ opacity: 0 }}
@@ -374,7 +401,7 @@ export default function LiveCaptionScreen() {
               </motion.div>
             )}
 
-            {/* Show final text after stopping */}
+            {/* Final text after stopping */}
             {!isListening && finalText && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -399,7 +426,7 @@ export default function LiveCaptionScreen() {
               </motion.div>
             )}
 
-            {/* Show placeholder when idle */}
+            {/* Placeholder when idle */}
             {!isListening && !finalText && !liveText && (
               <div className="flex flex-col items-center justify-center h-full text-center">
                 <div className="text-6xl mb-4">🎤</div>
