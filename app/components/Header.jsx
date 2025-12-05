@@ -67,6 +67,18 @@ export default function Header({ activeMode, onModeChange }) {
               <MicrophoneIcon />
               <span>Speech to Text</span>
             </button>
+            
+
+<button
+  href="/live-captions"
+  className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700"
+>
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="2" y="7" width="20" height="15" rx="2" ry="2"/>
+    <polyline points="17 2 12 7 7 2"/>
+  </svg>
+  <span>Live Captions</span>
+</button>
           </div>
 
           {/* Theme Toggle */}
