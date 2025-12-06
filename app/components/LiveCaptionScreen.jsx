@@ -2,9 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useRouter } from 'next/navigation';
-import { SpeechEngine, isSpeechRecognitionSupported } from '../lib/speechEngine';
-import toast from 'react-hot-toast';
 
 // Available languages for selection
 const AVAILABLE_LANGUAGES = [
@@ -20,6 +17,36 @@ const AVAILABLE_LANGUAGES = [
   { code: 'pa', name: 'Punjabi', flag: '🇮🇳' },
   { code: 'ur', name: 'Urdu', flag: '🇵🇰' },
 ];
+
+// Voice command trigger words in different languages
+const VOICE_COMMANDS = {
+  search: {
+    en: ['search', 'search this', 'search now', 'search this now', 'google this', 'google search', 'search it'],
+    hi: ['खोजो', 'सर्च करो', 'गूगल पे खोजो', 'ढूंढो', 'सर्च'],
+    kn: ['ಹುಡುಕು', 'ಸರ್ಚ್ ಮಾಡು', 'ಗೂಗಲ್ ಮಾಡು', 'ಸರ್ಚ್'],
+    ta: ['தேடு', 'தேடவும்', 'கூகுள் செய்', 'சர்ச்'],
+    te: ['వెతకండి', 'శోధించండి', 'గూగుల్ చేయండి', 'సెర్చ్'],
+    ml: ['തിരയുക', 'സെർച്ച് ചെയ്യുക', 'സെർച്ച്'],
+    mr: ['शोधा', 'सर्च करा', 'सर्च'],
+    gu: ['શોધો', 'સર્ચ કરો', 'સર્ચ'],
+    bn: ['খোঁজ', 'সার্চ কর', 'সার্চ'],
+    pa: ['ਖੋਜੋ', 'ਸਰਚ ਕਰੋ', 'ਸਰਚ'],
+    ur: ['تلاش کریں', 'سرچ کریں', 'سرچ'],
+  },
+  stop: {
+    en: ['stop', 'stop recording', 'stop listening', 'end', 'finish'],
+    hi: ['रुको', 'रोको', 'बंद करो', 'समाप्त', 'खत्म'],
+    kn: ['ನಿಲ್ಲಿ', 'ನಿಲ್ಲು', 'ಬಿಡು', 'ಮುಗಿಸು'],
+    ta: ['நில்', 'நிறுத்து', 'நிறுத்தவும்', 'முடி'],
+    te: ['ఆపు', 'ఆగు', 'నిలిపివేయి', 'ముగించు'],
+    ml: ['നിർത്തുക', 'നിർത്താൻ', 'അവസാനിപ്പിക്കുക'],
+    mr: ['थांबा', 'बंद', 'बंद करा', 'संपवा'],
+    gu: ['બંધ', 'રોકો', 'બંધ કરો', 'સમાપ્ત'],
+    bn: ['থামো', 'বন্ধ', 'থামাও', 'শেষ'],
+    pa: ['ਰੁਕੋ', 'ਬੰਦ', 'ਬੰਦ ਕਰੋ', 'ਖਤਮ'],
+    ur: ['رکو', 'بند کریں', 'ختم کریں', 'بند'],
+  }
+};
 
 const BackIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -41,19 +68,279 @@ const StopIcon = () => (
   </svg>
 );
 
-export default function LiveCaptionScreen() {
-  const router = useRouter();
-  
-  // State management
+const SearchIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="11" cy="11" r="8"/>
+    <path d="m21 21-4.35-4.35"/>
+  </svg>
+);
+
+// Speech Recognition Engine
+class SpeechEngine {
+  constructor() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    
+    if (!SpeechRecognition) {
+      throw new Error('Speech Recognition is not supported in this browser');
+    }
+    
+    this.recognition = new SpeechRecognition();
+    this.recognition.continuous = true;
+    this.recognition.interimResults = true;
+    this.recognition.maxAlternatives = 1;
+    
+    this.isListening = false;
+    this.currentLanguage = 'en';
+    this.fullTranscript = '';
+    
+    this.onPartialResult = null;
+    this.onFinalResult = null;
+    this.onEnd = null;
+    this.onError = null;
+    this.onSearchTrigger = null;
+    this.onStopCommand = null;
+    
+    // Track if we've already processed a command to prevent duplicates
+    this.commandProcessed = false;
+  }
+
+  start(language = 'en') {
+    if (this.isListening) return;
+
+    this.currentLanguage = language;
+    this.recognition.lang = this.getLanguageCode(language);
+    this.fullTranscript = '';
+    this.commandProcessed = false;
+    
+    this.recognition.onresult = (event) => {
+      // If command already processed, ignore further results
+      if (this.commandProcessed) return;
+      
+      let interimTranscript = '';
+      let finalTranscript = '';
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript + ' ';
+          
+          // Check for STOP command first (highest priority)
+          if (this.checkStopCommand(transcript)) {
+            this.commandProcessed = true;
+            return; // Exit immediately
+          }
+          
+          // Then check for SEARCH command
+          if (this.checkSearchTrigger(transcript)) {
+            this.commandProcessed = true;
+            return; // Exit immediately
+          }
+          
+          // If no command, add to transcript
+          this.fullTranscript += transcript + ' ';
+        } else {
+          interimTranscript += transcript;
+          
+          // Check commands in interim results too (for faster response)
+          if (this.checkStopCommand(interimTranscript)) {
+            this.commandProcessed = true;
+            return;
+          }
+          
+          if (this.checkSearchTrigger(interimTranscript)) {
+            this.commandProcessed = true;
+            return;
+          }
+        }
+      }
+
+      if (this.onPartialResult && interimTranscript) {
+        this.onPartialResult(this.fullTranscript + interimTranscript);
+      }
+      
+      if (this.onFinalResult && finalTranscript) {
+        this.onFinalResult(this.fullTranscript.trim());
+      }
+    };
+
+    this.recognition.onend = () => {
+      this.isListening = false;
+      
+      if (this.onEnd) {
+        this.onEnd(this.fullTranscript.trim());
+      }
+    };
+
+    this.recognition.onerror = (event) => {
+      this.isListening = false;
+      
+      if (this.onError) {
+        this.onError(event.error);
+      }
+    };
+
+    try {
+      this.recognition.start();
+      this.isListening = true;
+    } catch (error) {
+      if (this.onError) {
+        this.onError(error.message);
+      }
+    }
+  }
+
+  stop() {
+    if (!this.isListening) return;
+    
+    try {
+      this.recognition.stop();
+      this.isListening = false;
+    } catch (error) {
+      console.error('Error stopping recognition:', error);
+    }
+  }
+
+  checkStopCommand(text) {
+    const lowerText = text.toLowerCase().trim();
+    const stopCommands = VOICE_COMMANDS.stop[this.currentLanguage] || VOICE_COMMANDS.stop.en;
+    
+    // Check if text contains or ends with stop command
+    for (const command of stopCommands) {
+      const commandLower = command.toLowerCase();
+      
+      // Exact match or ends with command
+      if (lowerText === commandLower || lowerText.endsWith(commandLower)) {
+        console.log('🛑 STOP command detected:', command);
+        
+        // Extract text before stop command
+        let textBeforeStop = text;
+        if (lowerText.endsWith(commandLower)) {
+          textBeforeStop = text.substring(0, text.length - command.length).trim();
+        } else if (lowerText === commandLower) {
+          textBeforeStop = this.fullTranscript.trim();
+        }
+        
+        // Update transcript without stop command
+        this.fullTranscript = textBeforeStop;
+        
+        // Trigger stop callback
+        if (this.onStopCommand) {
+          this.onStopCommand(textBeforeStop);
+        }
+        
+        // Stop recognition immediately
+        this.stop();
+        return true;
+      }
+      
+      // Also check if stop word appears anywhere (with word boundaries)
+      const wordPattern = new RegExp(`\\b${commandLower}\\b`, 'i');
+      if (wordPattern.test(lowerText)) {
+        console.log('🛑 STOP command detected (within text):', command);
+        
+        // Extract text before stop command
+        const stopIndex = lowerText.search(wordPattern);
+        const textBeforeStop = text.substring(0, stopIndex).trim();
+        
+        this.fullTranscript = textBeforeStop;
+        
+        if (this.onStopCommand) {
+          this.onStopCommand(textBeforeStop);
+        }
+        
+        this.stop();
+        return true;
+      }
+    }
+    
+    return false;
+  }
+
+  checkSearchTrigger(text) {
+    const lowerText = text.toLowerCase().trim();
+    const searchCommands = VOICE_COMMANDS.search[this.currentLanguage] || VOICE_COMMANDS.search.en;
+    
+    for (const command of searchCommands) {
+      const commandLower = command.toLowerCase();
+      
+      // Check if search command appears in text
+      if (lowerText.includes(commandLower)) {
+        console.log('🔍 SEARCH command detected:', command);
+        
+        // Extract text before the search command
+        const commandIndex = lowerText.indexOf(commandLower);
+        let searchText = text.substring(0, commandIndex).trim();
+        
+        // If search text is empty, use full transcript
+        if (!searchText) {
+          searchText = this.fullTranscript.trim();
+        }
+        
+        if (searchText && this.onSearchTrigger) {
+          this.onSearchTrigger(searchText);
+          this.stop(); // Stop after search
+          return true;
+        }
+      }
+      
+      // Also check if text ends with search command
+      if (lowerText.endsWith(commandLower)) {
+        console.log('🔍 SEARCH command detected (at end):', command);
+        
+        const searchText = text.substring(0, text.length - command.length).trim();
+        
+        if (searchText && this.onSearchTrigger) {
+          this.onSearchTrigger(searchText);
+          this.stop(); // Stop after search
+          return true;
+        }
+      }
+    }
+    
+    return false;
+  }
+
+  getLanguageCode(simpleLang) {
+    const LANGUAGE_MAP = {
+      en: 'en-US',
+      hi: 'hi-IN',
+      kn: 'kn-IN',
+      ta: 'ta-IN',
+      te: 'te-IN',
+      ml: 'ml-IN',
+      mr: 'mr-IN',
+      gu: 'gu-IN',
+      bn: 'bn-IN',
+      pa: 'pa-IN',
+      ur: 'ur-PK',
+    };
+    return LANGUAGE_MAP[simpleLang] || 'en-US';
+  }
+
+  getTranscript() {
+    return this.fullTranscript.trim();
+  }
+
+  clearTranscript() {
+    this.fullTranscript = '';
+  }
+}
+
+// Check browser support
+const isSpeechRecognitionSupported = () => {
+  return 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
+};
+
+export default function LiveCaptionWithSearch() {
   const [selectedLanguage, setSelectedLanguage] = useState('en');
   const [isListening, setIsListening] = useState(false);
   const [liveText, setLiveText] = useState('');
   const [finalText, setFinalText] = useState('');
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
   const [isSupported, setIsSupported] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
+  const [searchNotification, setSearchNotification] = useState('');
   
-  // Reference to the speech engine
   const speechEngineRef = useRef(null);
   const textContainerRef = useRef(null);
 
@@ -61,10 +348,6 @@ export default function LiveCaptionScreen() {
   useEffect(() => {
     const supported = isSpeechRecognitionSupported();
     setIsSupported(supported);
-    
-    if (!supported) {
-      toast.error('Speech recognition is not supported in this browser. Please use Chrome, Edge, or Safari.');
-    }
   }, []);
 
   // Auto-scroll to bottom when text updates
@@ -74,12 +357,47 @@ export default function LiveCaptionScreen() {
     }
   }, [liveText, finalText]);
 
-  /**
-   * Handle Start Button Click
-   */
+  const handleSearch = (searchText) => {
+    if (!searchText || searchText.trim().length === 0) return;
+    
+    console.log('🔍 Searching for:', searchText);
+    
+    // Show notification
+    setSearchNotification(`Searching: "${searchText}"`);
+    
+    // Set final text
+    setFinalText(searchText);
+    setLiveText('');
+    setIsListening(false);
+    
+    // Open Google search in new tab
+    const searchQuery = encodeURIComponent(searchText.trim());
+    const searchUrl = `https://www.google.com/search?q=${searchQuery}`;
+    window.open(searchUrl, '_blank', 'noopener,noreferrer');
+    
+    // Clear notification after 3 seconds
+    setTimeout(() => {
+      setSearchNotification('');
+    }, 3000);
+  };
+
+  const handleStopCommand = (textBeforeStop) => {
+    console.log('🛑 Stop command triggered. Text:', textBeforeStop);
+    
+    setIsListening(false);
+    setFinalText(textBeforeStop);
+    setLiveText('');
+    
+    // Show notification
+    setSearchNotification('Recording stopped by voice');
+    setTimeout(() => {
+      setSearchNotification('');
+    }, 2000);
+  };
+
   const handleStart = () => {
     if (!isSupported) {
-      toast.error('Speech recognition is not supported in this browser');
+      alert('Speech recognition is not supported in this browser');
       return;
     }
 
@@ -95,27 +413,24 @@ export default function LiveCaptionScreen() {
       };
       
       engine.onEnd = (text) => {
-        console.log('Recognition ended. Final text:', text);
         setIsListening(false);
         setFinalText(text);
         setLiveText('');
-        
-        if (text && text.length > 0) {
-          saveTranscript(text, selectedLanguage);
-        }
       };
       
       engine.onError = (error) => {
-        console.error('Speech recognition error:', error);
         setIsListening(false);
-        
-        if (error === 'no-speech') {
-          toast.error('No speech detected. Please try again.');
-        } else if (error === 'not-allowed') {
-          toast.error('Microphone permission denied. Please allow microphone access.');
-        } else {
-          toast.error(`Error: ${error}`);
-        }
+        console.error('Speech recognition error:', error);
+      };
+      
+      // Handle search trigger
+      engine.onSearchTrigger = (searchText) => {
+        handleSearch(searchText);
+      };
+      
+      // Handle stop command
+      engine.onStopCommand = (textBeforeStop) => {
+        handleStopCommand(textBeforeStop);
       };
       
       speechEngineRef.current = engine;
@@ -126,98 +441,45 @@ export default function LiveCaptionScreen() {
       engine.start(selectedLanguage);
       setIsListening(true);
       
-      const langName = AVAILABLE_LANGUAGES.find(l => l.code === selectedLanguage)?.name || 'selected language';
-      toast.success(`Started listening in ${langName}`);
-      
     } catch (error) {
       console.error('Failed to start recognition:', error);
-      toast.error(error.message || 'Failed to start recognition');
+      alert(error.message || 'Failed to start recognition');
     }
   };
 
-  /**
-   * Handle Stop Button Click
-   */
   const handleStop = () => {
     if (speechEngineRef.current) {
       speechEngineRef.current.stop();
-      toast.success('Recognition stopped');
     }
   };
 
-  /**
-   * Save transcript to backend
-   */
-  const saveTranscript = async (text, language) => {
-    if (!text || text.trim().length === 0) return;
-    
-    setIsSaving(true);
-    
-    try {
-      const response = await fetch('/api/transcripts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          text: text.trim(),
-          language: language,
-          timestamp: new Date().toISOString(),
-        }),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to save transcript');
-      }
-      
-      const data = await response.json();
-      console.log('Transcript saved:', data);
-      
-    } catch (error) {
-      console.error('Error saving transcript:', error);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  /**
-   * Handle Clear Button
-   */
   const handleClear = () => {
     setLiveText('');
     setFinalText('');
     if (speechEngineRef.current) {
       speechEngineRef.current.clearTranscript();
     }
-    toast.success('Cleared');
   };
 
-  /**
-   * Handle Copy Button
-   */
   const handleCopy = () => {
     const textToCopy = finalText || liveText;
     if (textToCopy) {
       navigator.clipboard.writeText(textToCopy);
-      toast.success('Copied to clipboard');
+      alert('Copied to clipboard');
     }
   };
 
-  /**
-   * Handle Back Button
-   */
-  const handleBack = () => {
-    if (isListening) {
-      handleStop();
+  const handleManualSearch = () => {
+    const textToSearch = finalText || liveText;
+    if (textToSearch) {
+      handleSearch(textToSearch);
     }
-    router.push('/');
   };
 
-  // Show browser not supported message
   if (!isSupported) {
     return (
-      <div className="min-h-screen bg-white dark:bg-slate-900 flex items-center justify-center p-6">
-        <div className="text-center max-w-md">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center p-6">
+        <div className="text-center max-w-md bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-8 border border-gray-200 dark:border-slate-700">
           <div className="text-6xl mb-4">🎤</div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
             Browser Not Supported
@@ -225,36 +487,36 @@ export default function LiveCaptionScreen() {
           <p className="text-gray-600 dark:text-gray-400 mb-4">
             Speech recognition requires a modern browser. Please use:
           </p>
-          <ul className="text-gray-600 dark:text-gray-400 space-y-2 mb-6">
+          <ul className="text-gray-600 dark:text-gray-400 space-y-2 mb-6 text-left">
             <li>• Google Chrome (Desktop/Mobile)</li>
             <li>• Microsoft Edge</li>
             <li>• Safari (macOS/iOS)</li>
           </ul>
-          <button
-            onClick={handleBack}
-            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold transition-colors"
-          >
-            Go Back
-          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
       {/* Header Controls */}
-      <div className="fixed top-0 left-0 right-0 bg-white dark:bg-slate-800 shadow-md z-50 p-4">
+      <div className="fixed top-0 left-0 right-0 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md shadow-md z-50 p-4 border-b border-gray-200 dark:border-slate-700">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
           
-          {/* Back Button */}
-          <button
-            onClick={handleBack}
-            className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-          >
-            <BackIcon />
-            <span className="font-medium">Back</span>
-          </button>
+          {/* Title */}
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
+              <MicIcon />
+            </div>
+            <div>
+              <h1 className="text-lg font-bold text-gray-900 dark:text-white">
+                Live Captions
+              </h1>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Say "search" or "stop"
+              </p>
+            </div>
+          </div>
 
           {/* Language Selector */}
           <div className="relative">
@@ -286,7 +548,7 @@ export default function LiveCaptionScreen() {
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
-                    className="absolute top-full left-0 mt-2 w-64 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-200 dark:border-slate-700 overflow-hidden z-50 max-h-80 overflow-y-auto"
+                    className="absolute top-full right-0 mt-2 w-64 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-200 dark:border-slate-700 overflow-hidden z-50 max-h-80 overflow-y-auto"
                   >
                     {AVAILABLE_LANGUAGES.map((lang) => (
                       <button
@@ -294,7 +556,6 @@ export default function LiveCaptionScreen() {
                         onClick={() => {
                           setSelectedLanguage(lang.code);
                           setShowLanguageDropdown(false);
-                          toast.success(`Selected: ${lang.name}`);
                         }}
                         className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors ${
                           selectedLanguage === lang.code ? 'bg-indigo-50 dark:bg-indigo-900/30' : ''
@@ -332,7 +593,7 @@ export default function LiveCaptionScreen() {
             ) : (
               <button
                 onClick={handleStop}
-                className="flex items-center gap-2 px-6 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-semibold transition-all shadow-lg"
+                className="flex items-center gap-2 px-6 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-semibold transition-all shadow-lg animate-pulse"
               >
                 <StopIcon />
                 <span>Stop</span>
@@ -341,6 +602,15 @@ export default function LiveCaptionScreen() {
 
             {(finalText || liveText) && (
               <>
+                <button
+                  onClick={handleManualSearch}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-semibold transition-all shadow-lg"
+                  title="Search on Google"
+                >
+                  <SearchIcon />
+                  <span>Search</span>
+                </button>
+                
                 <button
                   onClick={handleCopy}
                   className="px-4 py-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors"
@@ -359,8 +629,23 @@ export default function LiveCaptionScreen() {
         </div>
       </div>
 
+      {/* Search Notification */}
+      <AnimatePresence>
+        {searchNotification && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-green-500 text-white px-6 py-3 rounded-lg shadow-xl flex items-center gap-3"
+          >
+            <SearchIcon />
+            <span className="font-semibold">{searchNotification}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Main Content Area */}
-      <div className="pt-20 pb-8 px-6">
+      <div className="pt-24 pb-8 px-6">
         <div className="max-w-7xl mx-auto">
           
           {/* Listening Indicator */}
@@ -378,7 +663,7 @@ export default function LiveCaptionScreen() {
                   className="w-3 h-3 bg-red-500 rounded-full"
                 />
                 <span className="text-lg font-semibold text-gray-700 dark:text-gray-300">
-                  Listening... (Say "stop" to end)
+                  Listening... Say "search" to Google it or "stop" to end
                 </span>
               </motion.div>
             )}
@@ -387,7 +672,7 @@ export default function LiveCaptionScreen() {
           {/* Text Display Area */}
           <div
             ref={textContainerRef}
-            className="min-h-[70vh] max-h-[70vh] overflow-y-auto bg-white dark:bg-slate-900 rounded-2xl p-8 border-2 border-gray-200 dark:border-slate-700"
+            className="min-h-[70vh] max-h-[70vh] overflow-y-auto bg-white dark:bg-slate-800 rounded-2xl p-8 border-2 border-gray-200 dark:border-slate-700 shadow-xl"
           >
             {/* Live text while listening */}
             {isListening && liveText && (
@@ -414,7 +699,6 @@ export default function LiveCaptionScreen() {
                   </svg>
                   <span className="text-sm font-semibold text-green-600 dark:text-green-400">
                     Transcription Complete
-                    {isSaving && ' • Saving...'}
                   </span>
                 </div>
                 <div
@@ -433,9 +717,25 @@ export default function LiveCaptionScreen() {
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                   Ready to Start
                 </h2>
-                <p className="text-gray-600 dark:text-gray-400 max-w-md">
+                <p className="text-gray-600 dark:text-gray-400 max-w-md mb-4">
                   Select your language and press "Start" to begin. Live captions will appear here as you speak.
                 </p>
+                <div className="bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-200 dark:border-indigo-800 rounded-xl p-4 max-w-lg">
+                  <p className="text-sm font-semibold text-indigo-700 dark:text-indigo-300 mb-2">
+                    💡 Voice Commands
+                  </p>
+                  <div className="space-y-2">
+                    <p className="text-sm text-indigo-600 dark:text-indigo-400">
+                      🔍 Say <strong>"search"</strong> or <strong>"search this now"</strong> to instantly search on Google
+                    </p>
+                    <p className="text-sm text-indigo-600 dark:text-indigo-400">
+                      🛑 Say <strong>"stop"</strong> to end recording
+                    </p>
+                  </div>
+                  <p className="text-xs text-indigo-500 dark:text-indigo-500 mt-2">
+                    Works in all languages • Hands-free control
+                  </p>
+                </div>
               </div>
             )}
           </div>

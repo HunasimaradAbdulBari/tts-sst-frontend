@@ -1,4 +1,3 @@
-// app/live-captions/page.jsx
 import LiveCaptionScreen from '../components/LiveCaptionScreen';
 
 export const metadata = {
