@@ -360,25 +360,52 @@ export default function LiveCaptionWithSearch() {
   const handleSearch = (searchText) => {
     if (!searchText || searchText.trim().length === 0) return;
     
-    console.log('🔍 Searching for:', searchText);
+    console.log('🔍 Processing search/AI request:', searchText);
+    
+    // The backend will handle AI detection, but we can also detect here for faster UX
+    const lowerText = searchText.toLowerCase();
+    
+    let redirectUrl = null;
+    let notificationText = '';
+    
+    // Check for AI platforms
+    if (lowerText.includes('chatgpt') || lowerText.includes('chat gpt') || lowerText.includes('openai')) {
+      // Extract query without "chatgpt"
+      const query = searchText.replace(/chatgpt|chat gpt|openai|write|code|in|the|on/gi, '').trim();
+      redirectUrl = `https://chat.openai.com/?q=${encodeURIComponent(query)}`;
+      notificationText = `Opening ChatGPT: "${query}"`;
+    } 
+    else if (lowerText.includes('claude') || lowerText.includes('anthropic')) {
+      const query = searchText.replace(/claude|claude ai|anthropic|write|code|in|the|on/gi, '').trim();
+      redirectUrl = `https://claude.ai/new?q=${encodeURIComponent(query)}`;
+      notificationText = `Opening Claude AI: "${query}"`;
+    }
+    else if (lowerText.includes('gemini') || lowerText.includes('bard') || lowerText.includes('google gemini')) {
+      const query = searchText.replace(/gemini|google gemini|bard|write|code|in|the|on/gi, '').trim();
+      redirectUrl = `https://gemini.google.com/?q=${encodeURIComponent(query)}`;
+      notificationText = `Opening Gemini: "${query}"`;
+    }
+    else {
+      // Regular Google search
+      redirectUrl = `https://www.google.com/search?q=${encodeURIComponent(searchText.trim())}`;
+      notificationText = `Searching Google: "${searchText}"`;
+    }
     
     // Show notification
-    setSearchNotification(`Searching: "${searchText}"`);
+    setSearchNotification(notificationText);
     
     // Set final text
     setFinalText(searchText);
     setLiveText('');
     setIsListening(false);
     
-    // Open Google search in new tab
-    const searchQuery = encodeURIComponent(searchText.trim());
-    const searchUrl = `https://www.google.com/search?q=${searchQuery}`;
-    window.open(searchUrl, '_blank', 'noopener,noreferrer');
+    // Open in new tab
+    window.open(redirectUrl, '_blank', 'noopener,noreferrer');
     
-    // Clear notification after 3 seconds
+    // Clear notification after 4 seconds
     setTimeout(() => {
       setSearchNotification('');
-    }, 3000);
+    }, 4000);
   };
 
   const handleStopCommand = (textBeforeStop) => {
@@ -713,7 +740,7 @@ export default function LiveCaptionWithSearch() {
             {/* Placeholder when idle */}
             {!isListening && !finalText && !liveText && (
               <div className="flex flex-col items-center justify-center h-full text-center">
-                <div className="text-6xl mb-4">🎤</div>
+                {/* <div className="text-6xl mb-4">🎤</div>
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                   Ready to Start
                 </h2>
@@ -722,20 +749,29 @@ export default function LiveCaptionWithSearch() {
                 </p>
                 <div className="bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-200 dark:border-indigo-800 rounded-xl p-4 max-w-lg">
                   <p className="text-sm font-semibold text-indigo-700 dark:text-indigo-300 mb-2">
-                    💡 Voice Commands
+                    💡 Voice Commands & AI Detection
                   </p>
                   <div className="space-y-2">
                     <p className="text-sm text-indigo-600 dark:text-indigo-400">
-                      🔍 Say <strong>"search"</strong> or <strong>"search this now"</strong> to instantly search on Google
+                      🔍 <strong>"search [query]"</strong> - Search on Google
                     </p>
                     <p className="text-sm text-indigo-600 dark:text-indigo-400">
-                      🛑 Say <strong>"stop"</strong> to end recording
+                      🤖 <strong>"write code in ChatGPT"</strong> - Opens ChatGPT
+                    </p>
+                    <p className="text-sm text-indigo-600 dark:text-indigo-400">
+                      🤖 <strong>"explain this in Claude"</strong> - Opens Claude AI
+                    </p>
+                    <p className="text-sm text-indigo-600 dark:text-indigo-400">
+                      🤖 <strong>"ask Gemini about..."</strong> - Opens Gemini
+                    </p>
+                    <p className="text-sm text-indigo-600 dark:text-indigo-400">
+                      🛑 <strong>"stop"</strong> - End recording
                     </p>
                   </div>
                   <p className="text-xs text-indigo-500 dark:text-indigo-500 mt-2">
-                    Works in all languages • Hands-free control
+                    Works in all languages • Perfect grammar • AI-powered
                   </p>
-                </div>
+                </div> */}
               </div>
             )}
           </div>
