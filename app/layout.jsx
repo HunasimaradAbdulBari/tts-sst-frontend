@@ -1,28 +1,6 @@
-import { Inter } from 'next/font/google';
-import './globals.css';
-import './styles/animations.css';
-import { ThemeProvider } from './context/ThemeContext';
-import { LanguageProvider } from './context/LanguageContext';
-import { Toaster } from 'react-hot-toast';
-import Footer from './components/Footer';
-import ErrorBoundary from './components/ErrorBoundary';
-
-const inter = Inter({ 
-  subsets: ['latin'],
-  variable: '--font-inter',
-  display: 'swap',
-  weight: ['300', '400', '500', '600', '700', '800'],
-});
-
-export const metadata = {
-  title: 'Voice AI - Professional Speech Platform',
-  description: 'Professional multilingual Text-to-Speech and Speech-to-Text platform',
-  viewport: 'width=device-width, initial-scale=1',
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
-    { media: '(prefers-color-scheme: dark)', color: '#0f172a' },
-  ],
-};
+import { WhiteboardProvider } from './context/WhiteboardContext';
+import GlobalVoiceCommandListener from './hooks/useGlobalVoiceCommands';
+import WhiteboardOverlay from './components/Whiteboard/WhiteboardOverlay';
 
 export default function RootLayout({ children }) {
   return (
@@ -31,10 +9,17 @@ export default function RootLayout({ children }) {
         <ErrorBoundary>
           <ThemeProvider>
             <LanguageProvider>
-              <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-                {children}
-                <Footer />
-              </div>
+              <WhiteboardProvider>
+                {/* Global voice command listener */}
+                <GlobalVoiceCommandListener currentLanguage="en" />
+                
+                {/* Whiteboard overlay */}
+                <WhiteboardOverlay />
+                
+                <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+                  {children}
+                  <Footer />
+                </div>
               <Toaster
                 position="top-right"
                 toastOptions={{
@@ -60,6 +45,7 @@ export default function RootLayout({ children }) {
                   },
                 }}
               />
+           </WhiteboardProvider>
             </LanguageProvider>
           </ThemeProvider>
         </ErrorBoundary>
