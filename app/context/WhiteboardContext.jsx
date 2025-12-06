@@ -16,26 +16,34 @@ export function WhiteboardProvider({ children }) {
   useEffect(() => {
     setMounted(true);
     // Load persisted state from sessionStorage
-    const savedState = sessionStorage.getItem('whiteboard-open');
-    if (savedState === 'true') {
-      setIsOpen(true);
+    if (typeof window !== 'undefined') {
+      const savedState = sessionStorage.getItem('whiteboard-open');
+      if (savedState === 'true') {
+        setIsOpen(true);
+      }
     }
   }, []);
 
   const openWhiteboard = useCallback(() => {
     setIsOpen(true);
-    sessionStorage.setItem('whiteboard-open', 'true');
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('whiteboard-open', 'true');
+    }
   }, []);
 
   const closeWhiteboard = useCallback(() => {
     setIsOpen(false);
-    sessionStorage.setItem('whiteboard-open', 'false');
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('whiteboard-open', 'false');
+    }
   }, []);
 
   const toggleWhiteboard = useCallback(() => {
     setIsOpen(prev => {
       const newState = !prev;
-      sessionStorage.setItem('whiteboard-open', String(newState));
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('whiteboard-open', String(newState));
+      }
       return newState;
     });
   }, []);
