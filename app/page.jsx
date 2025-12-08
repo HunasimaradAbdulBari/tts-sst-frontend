@@ -1,11 +1,125 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import SpeechToText from './components/SpeechToText';
 import TextToSpeech from './components/TextToSpeech';
 import Header from './components/Header';
 import { useWhiteboard } from './context/WhiteboardContext';
+import toast from 'react-hot-toast';
+
+// Global Voice Command Listener
+function GlobalVoiceCommandListener() {
+  const { openWhiteboard, closeWhiteboard, isOpen } = useWhiteboard();
+  
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      console.warn('Speech Recognition not supported');
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    let lastCommandTime = 0;
+
+    recognition.onresult = (event) => {
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          const transcript = event.results[i][0].transcript.toLowerCase().trim();
+          const now = Date.now();
+          
+          // Debounce - prevent duplicate triggers within 2 seconds
+          if (now - lastCommandTime < 2000) continue;
+          
+          // Check for "open whiteboard" command
+          if (transcript.includes('open whiteboard') || 
+              transcript.includes('show whiteboard') || 
+              transcript.includes('whiteboard open')) {
+            lastCommandTime = now;
+            openWhiteboard();
+            showFeedback('Whiteboard Opened', '✓');
+          }
+          
+          // Check for "close whiteboard" command
+          if (transcript.includes('close whiteboard') || 
+              transcript.includes('hide whiteboard') || 
+              transcript.includes('whiteboard close')) {
+            lastCommandTime = now;
+            closeWhiteboard();
+            showFeedback('Whiteboard Closed', '✓');
+          }
+        }
+      }
+    };
+
+    recognition.onerror = (event) => {
+      if (event.error === 'no-speech') return;
+      console.error('Speech recognition error:', event.error);
+      
+      // Restart after error
+      setTimeout(() => {
+        try {
+          recognition.start();
+        } catch (e) {}
+      }, 1000);
+    };
+
+    recognition.onend = () => {
+      // Auto-restart continuous listening
+      try {
+        recognition.start();
+      } catch (e) {}
+    };
+
+    // Start listening
+    try {
+      recognition.start();
+      console.log('🎤 Global voice commands activated');
+    } catch (error) {
+      console.error('Failed to start voice commands:', error);
+    }
+
+    // Cleanup
+    return () => {
+      try {
+        recognition.stop();
+      } catch (e) {}
+    };
+  }, [openWhiteboard, closeWhiteboard]);
+
+  return null;
+}
+
+function showFeedback(message, icon) {
+  // Visual feedback
+  const feedback = document.createElement('div');
+  feedback.className = 'fixed top-20 left-1/2 -translate-x-1/2 z-[10000] bg-green-500 text-white px-6 py-3 rounded-lg shadow-xl flex items-center gap-3 animate-bounce-in';
+  feedback.innerHTML = `
+    <span class="text-2xl">${icon}</span>
+    <span class="font-semibold">${message}</span>
+  `;
+  document.body.appendChild(feedback);
+  
+  // Audio feedback
+  try {
+    const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBjiU2/LNfSYGKH3K8N+OOggYZrjq6p1QDAo9nN7yvmMdBjiS2/LNfScGKHzL8N2PPAcXZLfq6aFUIg0=');
+    audio.volume = 0.3;
+    audio.play().catch(() => {});
+  } catch (e) {}
+  
+  setTimeout(() => {
+    feedback.style.opacity = '0';
+    feedback.style.transform = 'translateX(-50%) translateY(-20px)';
+    feedback.style.transition = 'all 0.3s ease-out';
+    setTimeout(() => feedback.remove(), 300);
+  }, 2000);
+}
 
 export default function Home() {
   const [activeMode, setActiveMode] = useState('tts');
@@ -13,6 +127,9 @@ export default function Home() {
 
   return (
     <>
+      {/* Global Voice Command Listener - Always Active */}
+      <GlobalVoiceCommandListener />
+      
       <Header activeMode={activeMode} onModeChange={setActiveMode} />
       
       <div className="min-h-screen pt-24 pb-12 px-4 bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
@@ -74,7 +191,7 @@ export default function Home() {
 function VoiceCommandHint() {
   const [showHint, setShowHint] = useState(false);
 
-  useState(() => {
+  useEffect(() => {
     // Show hint only on first visit
     const hasSeenHint = localStorage.getItem('whiteboard-hint-seen');
     if (!hasSeenHint) {

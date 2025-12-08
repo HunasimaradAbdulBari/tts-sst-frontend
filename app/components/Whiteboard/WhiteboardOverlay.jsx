@@ -68,6 +68,109 @@ function getLanguageCode(lang) {
   return codes[lang] || 'en-US';
 }
 
+// Circle Gesture Detector
+class CircleGestureDetector {
+  constructor() {
+    this.points = [];
+    this.isDrawing = false;
+    this.minPoints = 15;
+    this.closeThreshold = 80;
+    this.minPerimeter = 100;
+  }
+
+  startGesture(x, y) {
+    this.points = [{ x, y }];
+    this.isDrawing = true;
+  }
+
+  addPoint(x, y) {
+    if (!this.isDrawing) return;
+    
+    const lastPoint = this.points[this.points.length - 1];
+    const distance = Math.sqrt(Math.pow(x - lastPoint.x, 2) + Math.pow(y - lastPoint.y, 2));
+    
+    if (distance > 5) {
+      this.points.push({ x, y });
+    }
+  }
+
+  endGesture() {
+    if (!this.isDrawing || this.points.length < this.minPoints) {
+      this.reset();
+      return null;
+    }
+
+    const startPoint = this.points[0];
+    const endPoint = this.points[this.points.length - 1];
+    const closureDistance = Math.sqrt(
+      Math.pow(endPoint.x - startPoint.x, 2) + Math.pow(endPoint.y - startPoint.y, 2)
+    );
+
+    if (closureDistance > this.closeThreshold) {
+      this.reset();
+      return null;
+    }
+
+    const perimeter = this.calculatePerimeter();
+    if (perimeter < this.minPerimeter) {
+      this.reset();
+      return null;
+    }
+
+    const boundingBox = this.getBoundingBox();
+    const result = {
+      isValid: true,
+      boundingBox,
+      points: [...this.points]
+    };
+
+    this.reset();
+    return result;
+  }
+
+  calculatePerimeter() {
+    let perimeter = 0;
+    for (let i = 1; i < this.points.length; i++) {
+      const dx = this.points[i].x - this.points[i - 1].x;
+      const dy = this.points[i].y - this.points[i - 1].y;
+      perimeter += Math.sqrt(dx * dx + dy * dy);
+    }
+    return perimeter;
+  }
+
+  getBoundingBox() {
+    let minX = Infinity, minY = Infinity;
+    let maxX = -Infinity, maxY = -Infinity;
+
+    for (const point of this.points) {
+      minX = Math.min(minX, point.x);
+      minY = Math.min(minY, point.y);
+      maxX = Math.max(maxX, point.x);
+      maxY = Math.max(maxY, point.y);
+    }
+
+    return {
+      x: minX,
+      y: minY,
+      width: maxX - minX,
+      height: maxY - minY,
+      left: minX,
+      top: minY,
+      right: maxX,
+      bottom: maxY
+    };
+  }
+
+  reset() {
+    this.points = [];
+    this.isDrawing = false;
+  }
+
+  getPoints() {
+    return [...this.points];
+  }
+}
+
 export default function WhiteboardOverlay() {
   const { isOpen, closeWhiteboard } = useWhiteboard();
   const [isListening, setIsListening] = useState(false);
@@ -76,7 +179,6 @@ export default function WhiteboardOverlay() {
   const [selectedLanguage, setSelectedLanguage] = useState('en');
   const [showLangDropdown, setShowLangDropdown] = useState(false);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [circlePath, setCirclePath] = useState([]);
   const [selectedText, setSelectedText] = useState('');
   const [showSearchModal, setShowSearchModal] = useState(false);
   
@@ -84,6 +186,7 @@ export default function WhiteboardOverlay() {
   const canvasRef = useRef(null);
   const transcriptRef = useRef(null);
   const fullTranscriptRef = useRef('');
+  const gestureDetectorRef = useRef(new CircleGestureDetector());
 
   // Check browser support
   const [isSupported, setIsSupported] = useState(true);
@@ -222,7 +325,6 @@ export default function WhiteboardOverlay() {
     setLiveText('');
     setFinalText('');
     fullTranscriptRef.current = '';
-    setCirclePath([]);
     clearCanvas();
   };
 
@@ -260,78 +362,60 @@ export default function WhiteboardOverlay() {
   };
 
   // Canvas gesture handling
-  const handleCanvasMouseDown = (e) => {
+  const getEventCoordinates = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
-    setIsDrawing(true);
-    setCirclePath([{ x, y }]);
+    if (e.touches && e.touches[0]) {
+      return {
+        x: e.touches[0].clientX - rect.left,
+        y: e.touches[0].clientY - rect.top
+      };
+    }
+    return {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    };
   };
 
-  const handleCanvasTouchStart = (e) => {
+  const handleCanvasStart = (e) => {
     e.preventDefault();
-    const rect = canvasRef.current.getBoundingClientRect();
-    const touch = e.touches[0];
-    const x = touch.clientX - rect.left;
-    const y = touch.clientY - rect.top;
-    
+    const { x, y } = getEventCoordinates(e);
     setIsDrawing(true);
-    setCirclePath([{ x, y }]);
+    gestureDetectorRef.current.startGesture(x, y);
   };
 
-  const handleCanvasMouseMove = (e) => {
-    if (!isDrawing) return;
-    
-    const rect = canvasRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
-    setCirclePath(prev => [...prev, { x, y }]);
-    drawPath();
-  };
-
-  const handleCanvasTouchMove = (e) => {
+  const handleCanvasMove = (e) => {
     if (!isDrawing) return;
     e.preventDefault();
     
-    const rect = canvasRef.current.getBoundingClientRect();
-    const touch = e.touches[0];
-    const x = touch.clientX - rect.left;
-    const y = touch.clientY - rect.top;
-    
-    setCirclePath(prev => [...prev, { x, y }]);
+    const { x, y } = getEventCoordinates(e);
+    gestureDetectorRef.current.addPoint(x, y);
     drawPath();
   };
 
-  const handleCanvasMouseUp = () => {
+  const handleCanvasEnd = (e) => {
     if (!isDrawing) return;
+    e.preventDefault();
     
     setIsDrawing(false);
     
-    // Check if it's a circle
-    if (circlePath.length > 10) {
-      const text = extractTextFromCircle();
+    const result = gestureDetectorRef.current.endGesture();
+    
+    if (result && result.isValid) {
+      const text = extractTextFromGesture(result);
       if (text) {
         setSelectedText(text);
         setShowSearchModal(true);
       }
     }
     
-    // Clear canvas after animation
     setTimeout(() => {
-      setCirclePath([]);
       clearCanvas();
     }, 500);
   };
 
-  const extractTextFromCircle = () => {
-    if (!transcriptRef.current || circlePath.length < 10) return '';
-    
+  const extractTextFromGesture = (gestureResult) => {
     // Simple extraction: get all visible text
     const text = finalText || liveText;
-    
-    // For now, return all text (simplified version)
     return text.trim();
   };
 
@@ -340,9 +424,11 @@ export default function WhiteboardOverlay() {
     if (!canvas) return;
     
     const ctx = canvas.getContext('2d');
+    const points = gestureDetectorRef.current.getPoints();
+    
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    if (circlePath.length < 2) return;
+    if (points.length < 2) return;
     
     // Create gradient
     const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
@@ -357,10 +443,10 @@ export default function WhiteboardOverlay() {
     ctx.shadowColor = 'rgba(99, 102, 241, 0.6)';
     
     ctx.beginPath();
-    ctx.moveTo(circlePath[0].x, circlePath[0].y);
+    ctx.moveTo(points[0].x, points[0].y);
     
-    for (let i = 1; i < circlePath.length; i++) {
-      ctx.lineTo(circlePath[i].x, circlePath[i].y);
+    for (let i = 1; i < points.length; i++) {
+      ctx.lineTo(points[i].x, points[i].y);
     }
     
     ctx.stroke();
@@ -486,6 +572,7 @@ export default function WhiteboardOverlay() {
                           onClick={() => {
                             setSelectedLanguage(lang.code);
                             setShowLangDropdown(false);
+                            toast.success(`Selected: ${lang.name}`);
                           }}
                           className={`w-full flex items-center gap-3 px-4 py-2 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors ${
                             selectedLanguage === lang.code ? 'bg-indigo-50 dark:bg-indigo-900/30' : ''
@@ -564,13 +651,13 @@ export default function WhiteboardOverlay() {
               ref={canvasRef}
               className="absolute inset-0 cursor-crosshair"
               style={{ pointerEvents: 'all', touchAction: 'none', zIndex: 2 }}
-              onMouseDown={handleCanvasMouseDown}
-              onMouseMove={handleCanvasMouseMove}
-              onMouseUp={handleCanvasMouseUp}
-              onMouseLeave={handleCanvasMouseUp}
-              onTouchStart={handleCanvasTouchStart}
-              onTouchMove={handleCanvasTouchMove}
-              onTouchEnd={handleCanvasMouseUp}
+              onMouseDown={handleCanvasStart}
+              onMouseMove={handleCanvasMove}
+              onMouseUp={handleCanvasEnd}
+              onMouseLeave={handleCanvasEnd}
+              onTouchStart={handleCanvasStart}
+              onTouchMove={handleCanvasMove}
+              onTouchEnd={handleCanvasEnd}
             />
           </div>
 
