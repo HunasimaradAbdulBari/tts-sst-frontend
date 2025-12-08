@@ -8,6 +8,7 @@ import { Toaster } from 'react-hot-toast';
 import Footer from './components/Footer';
 import ErrorBoundary from './components/ErrorBoundary';
 import WhiteboardOverlay from './components/Whiteboard/WhiteboardOverlay';
+import GlobalVoiceListener from './components/GlobalVoiceListner';
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -19,11 +20,6 @@ const inter = Inter({
 export const metadata = {
   title: 'Voice AI - Professional Speech Platform',
   description: 'Professional multilingual Text-to-Speech and Speech-to-Text platform with AI-Powered Whiteboard',
-  viewport: 'width=device-width, initial-scale=1',
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
-    { media: '(prefers-color-scheme: dark)', color: '#0f172a' },
-  ],
 };
 
 export default function RootLayout({ children }) {
@@ -34,7 +30,10 @@ export default function RootLayout({ children }) {
           <ThemeProvider>
             <LanguageProvider>
               <WhiteboardProvider>
-                {/* Whiteboard Overlay - Global across all pages */}
+                {/* Global Voice Command Listener - Always listening for "open whiteboard" */}
+                <GlobalVoiceListener enabled={true} currentLanguage="en" />
+                
+                {/* Whiteboard Overlay - Shows when opened */}
                 <WhiteboardOverlay />
                 
                 <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">

@@ -2,173 +2,36 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useWhiteboard } from '/tts-stt/frontend/app/context/WhiteboardContext';
+import { useWhiteboard } from '../../context/WhiteboardContext';
 import toast from 'react-hot-toast';
 
-// Available languages
+// Prevent multiple recognition instances
+let whiteboardRecognitionActive = false;
+
 const LANGUAGES = [
   { code: 'en', name: 'English', flag: '🇬🇧' },
   { code: 'hi', name: 'Hindi', flag: '🇮🇳' },
   { code: 'kn', name: 'Kannada', flag: '🇮🇳' },
-  { code: 'ta', name: 'Tamil', flag: '🇮🇳' },
-  { code: 'te', name: 'Telugu', flag: '🇮🇳' },
-  { code: 'ml', name: 'Malayalam', flag: '🇮🇳' },
-  { code: 'mr', name: 'Marathi', flag: '🇮🇳' },
-  { code: 'gu', name: 'Gujarati', flag: '🇮🇳' },
-  { code: 'bn', name: 'Bengali', flag: '🇮🇳' },
-  { code: 'pa', name: 'Punjabi', flag: '🇮🇳' },
-  { code: 'ur', name: 'Urdu', flag: '🇵🇰' },
 ];
 
-// Voice commands
 const VOICE_COMMANDS = {
   search: {
-    en: ['search', 'search this', 'google this', 'search it'],
-    hi: ['खोजो', 'सर्च करो', 'गूगल करो'],
-    kn: ['ಹುಡುಕು', 'ಸರ್ಚ್ ಮಾಡು'],
-    ta: ['தேடு', 'தேடவும்'],
-    te: ['వెతకండి', 'శోధించండి'],
-    ml: ['തിരയുക', 'സെർച്ച് ചെയ്യുക'],
-    mr: ['शोधा', 'सर्च करा'],
-    gu: ['શોધો', 'સર્ચ કરો'],
-    bn: ['খোঁজ', 'সার্চ কর'],
-    pa: ['ਖੋਜੋ', 'ਸਰਚ ਕਰੋ'],
-    ur: ['تلاش کریں', 'سرچ کریں'],
+    en: ['search', 'search this', 'google this'],
+    hi: ['खोजो', 'सर्च करो'],
   },
   stop: {
-    en: ['stop', 'stop recording', 'stop listening'],
-    hi: ['रुको', 'बंद करो', 'रोको'],
-    kn: ['ನಿಲ್ಲಿ', 'ನಿಲ್ಲು'],
-    ta: ['நில்', 'நிறுத்து'],
-    te: ['ఆపు', 'ఆగు'],
-    ml: ['നിർത്തുക'],
-    mr: ['थांबा', 'बंद करा'],
-    gu: ['બંધ કરો', 'રોકો'],
-    bn: ['থামো', 'বন্ধ করো'],
-    pa: ['ਰੁਕੋ', 'ਬੰਦ ਕਰੋ'],
-    ur: ['رکو', 'بند کریں'],
+    en: ['stop', 'stop recording'],
+    hi: ['रुको', 'बंद करो'],
   }
 };
 
-// Language code mapping
 function getLanguageCode(lang) {
   const codes = {
     en: 'en-US',
     hi: 'hi-IN',
     kn: 'kn-IN',
-    ta: 'ta-IN',
-    te: 'te-IN',
-    ml: 'ml-IN',
-    mr: 'mr-IN',
-    gu: 'gu-IN',
-    bn: 'bn-IN',
-    pa: 'pa-IN',
-    ur: 'ur-PK',
   };
   return codes[lang] || 'en-US';
-}
-
-// Circle Gesture Detector
-class CircleGestureDetector {
-  constructor() {
-    this.points = [];
-    this.isDrawing = false;
-    this.minPoints = 15;
-    this.closeThreshold = 80;
-    this.minPerimeter = 100;
-  }
-
-  startGesture(x, y) {
-    this.points = [{ x, y }];
-    this.isDrawing = true;
-  }
-
-  addPoint(x, y) {
-    if (!this.isDrawing) return;
-    
-    const lastPoint = this.points[this.points.length - 1];
-    const distance = Math.sqrt(Math.pow(x - lastPoint.x, 2) + Math.pow(y - lastPoint.y, 2));
-    
-    if (distance > 5) {
-      this.points.push({ x, y });
-    }
-  }
-
-  endGesture() {
-    if (!this.isDrawing || this.points.length < this.minPoints) {
-      this.reset();
-      return null;
-    }
-
-    const startPoint = this.points[0];
-    const endPoint = this.points[this.points.length - 1];
-    const closureDistance = Math.sqrt(
-      Math.pow(endPoint.x - startPoint.x, 2) + Math.pow(endPoint.y - startPoint.y, 2)
-    );
-
-    if (closureDistance > this.closeThreshold) {
-      this.reset();
-      return null;
-    }
-
-    const perimeter = this.calculatePerimeter();
-    if (perimeter < this.minPerimeter) {
-      this.reset();
-      return null;
-    }
-
-    const boundingBox = this.getBoundingBox();
-    const result = {
-      isValid: true,
-      boundingBox,
-      points: [...this.points]
-    };
-
-    this.reset();
-    return result;
-  }
-
-  calculatePerimeter() {
-    let perimeter = 0;
-    for (let i = 1; i < this.points.length; i++) {
-      const dx = this.points[i].x - this.points[i - 1].x;
-      const dy = this.points[i].y - this.points[i - 1].y;
-      perimeter += Math.sqrt(dx * dx + dy * dy);
-    }
-    return perimeter;
-  }
-
-  getBoundingBox() {
-    let minX = Infinity, minY = Infinity;
-    let maxX = -Infinity, maxY = -Infinity;
-
-    for (const point of this.points) {
-      minX = Math.min(minX, point.x);
-      minY = Math.min(minY, point.y);
-      maxX = Math.max(maxX, point.x);
-      maxY = Math.max(maxY, point.y);
-    }
-
-    return {
-      x: minX,
-      y: minY,
-      width: maxX - minX,
-      height: maxY - minY,
-      left: minX,
-      top: minY,
-      right: maxX,
-      bottom: maxY
-    };
-  }
-
-  reset() {
-    this.points = [];
-    this.isDrawing = false;
-  }
-
-  getPoints() {
-    return [...this.points];
-  }
 }
 
 export default function WhiteboardOverlay() {
@@ -178,17 +41,14 @@ export default function WhiteboardOverlay() {
   const [finalText, setFinalText] = useState('');
   const [selectedLanguage, setSelectedLanguage] = useState('en');
   const [showLangDropdown, setShowLangDropdown] = useState(false);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [selectedText, setSelectedText] = useState('');
-  const [showSearchModal, setShowSearchModal] = useState(false);
   
   const recognitionRef = useRef(null);
-  const canvasRef = useRef(null);
   const transcriptRef = useRef(null);
   const fullTranscriptRef = useRef('');
-  const gestureDetectorRef = useRef(new CircleGestureDetector());
+  const canvasRef = useRef(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [circlePath, setCirclePath] = useState([]);
 
-  // Check browser support
   const [isSupported, setIsSupported] = useState(true);
 
   useEffect(() => {
@@ -198,7 +58,6 @@ export default function WhiteboardOverlay() {
     }
   }, []);
 
-  // Initialize speech recognition
   useEffect(() => {
     if (!isOpen || !isSupported) return;
 
@@ -218,13 +77,11 @@ export default function WhiteboardOverlay() {
         const transcript = event.results[i][0].transcript;
         
         if (event.results[i].isFinal) {
-          // Check for stop command
           if (checkCommand(transcript, 'stop')) {
             stopListening();
             return;
           }
           
-          // Check for search command
           if (checkCommand(transcript, 'search')) {
             const searchQuery = fullTranscriptRef.current.trim() || transcript.trim();
             if (searchQuery) {
@@ -249,13 +106,14 @@ export default function WhiteboardOverlay() {
     };
 
     recognition.onerror = (event) => {
-      if (event.error !== 'no-speech') {
-        console.error('Speech error:', event.error);
+      if (event.error !== 'no-speech' && event.error !== 'aborted') {
+        console.error('Whiteboard speech error:', event.error);
       }
     };
 
     recognition.onend = () => {
       setIsListening(false);
+      whiteboardRecognitionActive = false;
     };
 
     recognitionRef.current = recognition;
@@ -264,12 +122,12 @@ export default function WhiteboardOverlay() {
       if (recognition) {
         try {
           recognition.stop();
+          whiteboardRecognitionActive = false;
         } catch (e) {}
       }
     };
   }, [isOpen, selectedLanguage, isSupported]);
 
-  // Initialize canvas
   useEffect(() => {
     if (!isOpen || !canvasRef.current) return;
 
@@ -292,6 +150,11 @@ export default function WhiteboardOverlay() {
   };
 
   const startListening = () => {
+    if (whiteboardRecognitionActive) {
+      toast.error('Already listening');
+      return;
+    }
+
     if (recognitionRef.current && !isListening) {
       try {
         fullTranscriptRef.current = '';
@@ -299,10 +162,11 @@ export default function WhiteboardOverlay() {
         setFinalText('');
         recognitionRef.current.start();
         setIsListening(true);
+        whiteboardRecognitionActive = true;
         toast.success('Listening started');
       } catch (error) {
         console.error('Failed to start listening:', error);
-        toast.error('Failed to start listening');
+        toast.error('Failed to start');
       }
     }
   };
@@ -312,6 +176,7 @@ export default function WhiteboardOverlay() {
       try {
         recognitionRef.current.stop();
         setIsListening(false);
+        whiteboardRecognitionActive = false;
         setFinalText(fullTranscriptRef.current);
         setLiveText('');
         toast.success('Listening stopped');
@@ -325,6 +190,7 @@ export default function WhiteboardOverlay() {
     setLiveText('');
     setFinalText('');
     fullTranscriptRef.current = '';
+    setCirclePath([]);
     clearCanvas();
   };
 
@@ -335,88 +201,58 @@ export default function WhiteboardOverlay() {
     let url = '';
     let platform = 'Google';
     
-    // Detect AI platform
-    if (lowerQuery.includes('chatgpt') || lowerQuery.includes('chat gpt') || lowerQuery.includes('gpt')) {
-      const cleanQuery = query.replace(/chatgpt|chat gpt|gpt|in|on|using|with/gi, '').trim();
+    if (lowerQuery.includes('chatgpt') || lowerQuery.includes('gpt')) {
+      const cleanQuery = query.replace(/chatgpt|gpt|in|on|using|with/gi, '').trim();
       url = `https://chat.openai.com/?q=${encodeURIComponent(cleanQuery)}`;
       platform = 'ChatGPT';
     } else if (lowerQuery.includes('claude')) {
       const cleanQuery = query.replace(/claude|in|on|using|with/gi, '').trim();
       url = `https://claude.ai/new?q=${encodeURIComponent(cleanQuery)}`;
-      platform = 'Claude AI';
-    } else if (lowerQuery.includes('gemini') || lowerQuery.includes('bard')) {
-      const cleanQuery = query.replace(/gemini|bard|google gemini|in|on|using|with/gi, '').trim();
+      platform = 'Claude';
+    } else if (lowerQuery.includes('gemini')) {
+      const cleanQuery = query.replace(/gemini|in|on|using|with/gi, '').trim();
       url = `https://gemini.google.com/?q=${encodeURIComponent(cleanQuery)}`;
       platform = 'Gemini';
-    } else if (lowerQuery.includes('copilot')) {
-      const cleanQuery = query.replace(/copilot|bing|in|on|using|with/gi, '').trim();
-      url = `https://copilot.microsoft.com/?q=${encodeURIComponent(cleanQuery)}`;
-      platform = 'Copilot';
     } else {
       url = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
-      platform = 'Google';
     }
     
     toast.success(`Searching on ${platform}...`);
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
-  // Canvas gesture handling
-  const getEventCoordinates = (e) => {
+  const handleCanvasMouseDown = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
-    if (e.touches && e.touches[0]) {
-      return {
-        x: e.touches[0].clientX - rect.left,
-        y: e.touches[0].clientY - rect.top
-      };
-    }
-    return {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
-    };
-  };
-
-  const handleCanvasStart = (e) => {
-    e.preventDefault();
-    const { x, y } = getEventCoordinates(e);
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
     setIsDrawing(true);
-    gestureDetectorRef.current.startGesture(x, y);
+    setCirclePath([{ x, y }]);
   };
 
-  const handleCanvasMove = (e) => {
+  const handleCanvasMouseMove = (e) => {
     if (!isDrawing) return;
-    e.preventDefault();
-    
-    const { x, y } = getEventCoordinates(e);
-    gestureDetectorRef.current.addPoint(x, y);
+    const rect = canvasRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    setCirclePath(prev => [...prev, { x, y }]);
     drawPath();
   };
 
-  const handleCanvasEnd = (e) => {
+  const handleCanvasMouseUp = () => {
     if (!isDrawing) return;
-    e.preventDefault();
-    
     setIsDrawing(false);
     
-    const result = gestureDetectorRef.current.endGesture();
-    
-    if (result && result.isValid) {
-      const text = extractTextFromGesture(result);
+    if (circlePath.length > 10) {
+      const text = finalText || liveText;
       if (text) {
-        setSelectedText(text);
-        setShowSearchModal(true);
+        handleSearch(text);
       }
     }
     
     setTimeout(() => {
+      setCirclePath([]);
       clearCanvas();
     }, 500);
-  };
-
-  const extractTextFromGesture = (gestureResult) => {
-    // Simple extraction: get all visible text
-    const text = finalText || liveText;
-    return text.trim();
   };
 
   const drawPath = () => {
@@ -424,13 +260,10 @@ export default function WhiteboardOverlay() {
     if (!canvas) return;
     
     const ctx = canvas.getContext('2d');
-    const points = gestureDetectorRef.current.getPoints();
-    
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    if (points.length < 2) return;
+    if (circlePath.length < 2) return;
     
-    // Create gradient
     const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
     gradient.addColorStop(0, '#6366f1');
     gradient.addColorStop(1, '#a855f7');
@@ -443,10 +276,10 @@ export default function WhiteboardOverlay() {
     ctx.shadowColor = 'rgba(99, 102, 241, 0.6)';
     
     ctx.beginPath();
-    ctx.moveTo(points[0].x, points[0].y);
+    ctx.moveTo(circlePath[0].x, circlePath[0].y);
     
-    for (let i = 1; i < points.length; i++) {
-      ctx.lineTo(points[i].x, points[i].y);
+    for (let i = 1; i < circlePath.length; i++) {
+      ctx.lineTo(circlePath[i].x, circlePath[i].y);
     }
     
     ctx.stroke();
@@ -455,7 +288,6 @@ export default function WhiteboardOverlay() {
   const clearCanvas = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   };
@@ -466,11 +298,9 @@ export default function WhiteboardOverlay() {
     closeWhiteboard();
   };
 
-  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (!isOpen) return;
-      
       if (e.key === 'Escape') {
         handleClose();
       }
@@ -493,7 +323,7 @@ export default function WhiteboardOverlay() {
             Browser Not Supported
           </h2>
           <p className="text-gray-600 dark:text-gray-400 mb-4">
-            Speech recognition is not supported in this browser.
+            Please use Chrome, Edge, or Safari
           </p>
           <button
             onClick={handleClose}
@@ -544,49 +374,6 @@ export default function WhiteboardOverlay() {
             </div>
             
             <div className="flex items-center gap-2">
-              {/* Language Selector */}
-              <div className="relative">
-                <button
-                  onClick={() => setShowLangDropdown(!showLangDropdown)}
-                  disabled={isListening}
-                  className="px-3 py-2 bg-gray-100 dark:bg-slate-700 rounded-lg border border-gray-300 dark:border-slate-600 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors disabled:opacity-50 text-sm flex items-center gap-2"
-                >
-                  <span>{LANGUAGES.find(l => l.code === selectedLanguage)?.flag}</span>
-                  <span className="hidden md:inline">{LANGUAGES.find(l => l.code === selectedLanguage)?.name}</span>
-                </button>
-
-                {showLangDropdown && (
-                  <>
-                    <div
-                      className="fixed inset-0 z-40"
-                      onClick={() => setShowLangDropdown(false)}
-                    />
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="absolute top-full right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-200 dark:border-slate-700 overflow-hidden z-50 max-h-64 overflow-y-auto"
-                    >
-                      {LANGUAGES.map((lang) => (
-                        <button
-                          key={lang.code}
-                          onClick={() => {
-                            setSelectedLanguage(lang.code);
-                            setShowLangDropdown(false);
-                            toast.success(`Selected: ${lang.name}`);
-                          }}
-                          className={`w-full flex items-center gap-3 px-4 py-2 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors ${
-                            selectedLanguage === lang.code ? 'bg-indigo-50 dark:bg-indigo-900/30' : ''
-                          }`}
-                        >
-                          <span className="text-xl">{lang.flag}</span>
-                          <span className="text-sm font-semibold">{lang.name}</span>
-                        </button>
-                      ))}
-                    </motion.div>
-                  </>
-                )}
-              </div>
-
               {!isListening ? (
                 <button
                   onClick={startListening}
@@ -612,7 +399,6 @@ export default function WhiteboardOverlay() {
               <button
                 onClick={handleClose}
                 className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
-                aria-label="Close whiteboard"
               >
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <line x1="18" y1="6" x2="6" y2="18"/>
@@ -622,9 +408,8 @@ export default function WhiteboardOverlay() {
             </div>
           </div>
 
-          {/* Main Content */}
+          {/* Content */}
           <div className="flex-1 relative overflow-hidden">
-            {/* Transcript Display */}
             <div
               ref={transcriptRef}
               className="absolute inset-0 p-4 md:p-8 overflow-y-auto"
@@ -639,29 +424,23 @@ export default function WhiteboardOverlay() {
                   <div>
                     <div className="text-6xl mb-4">🎤</div>
                     <p className="text-xl md:text-2xl mb-4">Ready to Listen</p>
-                    <p className="text-sm md:text-base">Press Start and begin speaking</p>
-                    <p className="text-xs md:text-sm mt-2">Say "search" to Google or draw a circle around text</p>
+                    <p className="text-sm md:text-base">Press Start and speak</p>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Canvas for Drawing */}
             <canvas
               ref={canvasRef}
               className="absolute inset-0 cursor-crosshair"
               style={{ pointerEvents: 'all', touchAction: 'none', zIndex: 2 }}
-              onMouseDown={handleCanvasStart}
-              onMouseMove={handleCanvasMove}
-              onMouseUp={handleCanvasEnd}
-              onMouseLeave={handleCanvasEnd}
-              onTouchStart={handleCanvasStart}
-              onTouchMove={handleCanvasMove}
-              onTouchEnd={handleCanvasEnd}
+              onMouseDown={handleCanvasMouseDown}
+              onMouseMove={handleCanvasMouseMove}
+              onMouseUp={handleCanvasMouseUp}
+              onMouseLeave={handleCanvasMouseUp}
             />
           </div>
 
-          {/* Footer */}
           {(liveText || finalText) && (
             <div className="flex items-center justify-between px-4 md:px-6 py-3 border-t border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800">
               <div className="text-xs md:text-sm text-gray-600 dark:text-gray-400">
@@ -671,7 +450,7 @@ export default function WhiteboardOverlay() {
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(finalText || liveText);
-                    toast.success('Copied to clipboard');
+                    toast.success('Copied!');
                   }}
                   className="px-3 md:px-4 py-2 text-xs md:text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors"
                 >
@@ -687,42 +466,6 @@ export default function WhiteboardOverlay() {
             </div>
           )}
         </motion.div>
-
-        {/* Search Modal */}
-        <AnimatePresence>
-          {showSearchModal && selectedText && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-6 max-w-md w-full mx-4 z-[10000]"
-            >
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-                Search Selected Text
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-6 text-sm">
-                {selectedText.substring(0, 200)}...
-              </p>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    handleSearch(selectedText);
-                    setShowSearchModal(false);
-                  }}
-                  className="flex-1 px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-lg font-semibold transition-all"
-                >
-                  Search
-                </button>
-                <button
-                  onClick={() => setShowSearchModal(false)}
-                  className="px-4 py-3 bg-gray-200 dark:bg-slate-700 hover:bg-gray-300 dark:hover:bg-slate-600 text-gray-900 dark:text-white rounded-lg font-semibold transition-all"
-                >
-                  Cancel
-                </button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </motion.div>
     </AnimatePresence>
   );
