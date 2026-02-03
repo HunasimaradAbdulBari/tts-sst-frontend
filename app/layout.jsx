@@ -3,12 +3,9 @@ import './globals.css';
 import './styles/animations.css';
 import { ThemeProvider } from './context/ThemeContext';
 import { LanguageProvider } from './context/LanguageContext';
-import { WhiteboardProvider } from './context/WhiteboardContext';
 import { Toaster } from 'react-hot-toast';
 import Footer from './components/Footer';
 import ErrorBoundary from './components/ErrorBoundary';
-import WhiteboardOverlay from './components/Whiteboard/WhiteboardOverlay';
-import GlobalVoiceListener from './components/GlobalVoiceListner';
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -19,7 +16,12 @@ const inter = Inter({
 
 export const metadata = {
   title: 'Voice AI - Professional Speech Platform',
-  description: 'Professional multilingual Text-to-Speech and Speech-to-Text platform with AI-Powered Whiteboard',
+  description: 'Professional multilingual Text-to-Speech and Speech-to-Text platform',
+  viewport: 'width=device-width, initial-scale=1',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#0f172a' },
+  ],
 };
 
 export default function RootLayout({ children }) {
@@ -29,43 +31,35 @@ export default function RootLayout({ children }) {
         <ErrorBoundary>
           <ThemeProvider>
             <LanguageProvider>
-              <WhiteboardProvider>
-                {/* Global Voice Command Listener - Always listening for "open whiteboard" */}
-                <GlobalVoiceListener enabled={true} currentLanguage="en" />
-                
-                {/* Whiteboard Overlay - Shows when opened */}
-                <WhiteboardOverlay />
-                
-                <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-                  {children}
-                  <Footer />
-                </div>
-                <Toaster
-                  position="top-right"
-                  toastOptions={{
-                    duration: 3000,
-                    style: {
-                      background: '#1e293b',
-                      color: '#f1f5f9',
-                      border: '1px solid #334155',
-                      borderRadius: '0.75rem',
-                      padding: '1rem',
+              <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+                {children}
+                <Footer />
+              </div>
+              <Toaster
+                position="top-right"
+                toastOptions={{
+                  duration: 3000,
+                  style: {
+                    background: '#1e293b',
+                    color: '#f1f5f9',
+                    border: '1px solid #334155',
+                    borderRadius: '0.75rem',
+                    padding: '1rem',
+                  },
+                  success: {
+                    iconTheme: {
+                      primary: '#10b981',
+                      secondary: '#ffffff',
                     },
-                    success: {
-                      iconTheme: {
-                        primary: '#10b981',
-                        secondary: '#ffffff',
-                      },
+                  },
+                  error: {
+                    iconTheme: {
+                      primary: '#ef4444',
+                      secondary: '#ffffff',
                     },
-                    error: {
-                      iconTheme: {
-                        primary: '#ef4444',
-                        secondary: '#ffffff',
-                      },
-                    },
-                  }}
-                />
-              </WhiteboardProvider>
+                  },
+                }}
+              />
             </LanguageProvider>
           </ThemeProvider>
         </ErrorBoundary>

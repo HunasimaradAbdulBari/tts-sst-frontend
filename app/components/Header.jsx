@@ -1,7 +1,6 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useRouter } from 'next/navigation';
 import ThemeToggle from './ThemeToggle';
 
 const MicrophoneIcon = () => (
@@ -20,20 +19,7 @@ const SpeakerIcon = () => (
   </svg>
 );
 
-const CaptionsIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <rect x="2" y="7" width="20" height="15" rx="2" ry="2"/>
-    <polyline points="17 2 12 7 7 2"/>
-  </svg>
-);
-
 export default function Header({ activeMode, onModeChange }) {
-  const router = useRouter();
-
-  const handleLiveCaptions = () => {
-    router.push('/live-captions');
-  };
-
   return (
     <motion.header
       initial={{ y: -100, opacity: 0 }}
@@ -80,14 +66,6 @@ export default function Header({ activeMode, onModeChange }) {
             >
               <MicrophoneIcon />
               <span>Speech to Text</span>
-            </button>
-            
-            <button
-              onClick={handleLiveCaptions}
-              className="flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium hover:bg-white dark:hover:bg-slate-700 text-gray-600 dark:text-gray-400 transition-all"
-            >
-              <CaptionsIcon />
-              <span>Live Captions</span>
             </button>
           </div>
 
