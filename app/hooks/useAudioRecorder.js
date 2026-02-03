@@ -3,10 +3,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { AUDIO_CONFIG, RECORDING_STATES } from '../lib/constants';
 
-/**
- * Custom hook for audio recording with advanced features
- * @returns {Object} Recording state and methods
- */
 export const useAudioRecorder = () => {
   const [recordingState, setRecordingState] = useState(RECORDING_STATES.IDLE);
   const [audioBlob, setAudioBlob] = useState(null);
@@ -38,7 +34,6 @@ export const useAudioRecorder = () => {
       const bufferLength = analyserRef.current.frequencyBinCount;
       const dataArray = new Uint8Array(bufferLength);
 
-      // Update audio level in real-time
       const updateAudioLevel = () => {
         analyserRef.current.getByteFrequencyData(dataArray);
         
@@ -59,13 +54,12 @@ export const useAudioRecorder = () => {
     }
   }, []);
 
-  // Start recording
+  // Start recording - NO MAX DURATION
   const startRecording = useCallback(async (deviceId = null) => {
     try {
       setError(null);
       audioChunksRef.current = [];
 
-      // Get media stream
       const constraints = {
         audio: deviceId 
           ? { deviceId: { exact: deviceId }, echoCancellation: true, noiseSuppression: true }
@@ -75,10 +69,8 @@ export const useAudioRecorder = () => {
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
 
-      // Initialize audio analysis
       initializeAudioAnalysis(stream);
 
-      // Create media recorder
       const mimeType = MediaRecorder.isTypeSupported(AUDIO_CONFIG.MIME_TYPE)
         ? AUDIO_CONFIG.MIME_TYPE
         : 'audio/webm';
@@ -104,20 +96,15 @@ export const useAudioRecorder = () => {
         setRecordingState(RECORDING_STATES.ERROR);
       };
 
-      // Start recording
-      mediaRecorderRef.current.start(100); // Collect data every 100ms
+      mediaRecorderRef.current.start(100);
       setRecordingState(RECORDING_STATES.RECORDING);
       startTimeRef.current = Date.now();
 
-      // Start duration timer
+      // Timer WITHOUT auto-stop (unlimited duration)
       timerIntervalRef.current = setInterval(() => {
         const elapsed = (Date.now() - startTimeRef.current) / 1000;
         setDuration(elapsed);
-
-        // Auto-stop if max duration reached
-        if (elapsed >= AUDIO_CONFIG.MAX_DURATION) {
-          stopRecording();
-        }
+        // NO AUTO-STOP - UNLIMITED RECORDING
       }, 100);
 
     } catch (err) {
@@ -134,22 +121,18 @@ export const useAudioRecorder = () => {
       mediaRecorderRef.current.stop();
       setRecordingState(RECORDING_STATES.PROCESSING);
 
-      // Stop all tracks
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
       }
 
-      // Stop audio analysis
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
 
-      // Stop timer
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current);
       }
 
-      // Close audio context
       if (audioContextRef.current) {
         audioContextRef.current.close();
       }
@@ -158,37 +141,8 @@ export const useAudioRecorder = () => {
     }
   }, [recordingState]);
 
-  // Pause recording
-  const pauseRecording = useCallback(() => {
-    if (mediaRecorderRef.current && recordingState === RECORDING_STATES.RECORDING) {
-      mediaRecorderRef.current.pause();
-      setRecordingState(RECORDING_STATES.PAUSED);
-      
-      if (timerIntervalRef.current) {
-        clearInterval(timerIntervalRef.current);
-      }
-    }
-  }, [recordingState]);
-
-  // Resume recording
-  const resumeRecording = useCallback(() => {
-    if (mediaRecorderRef.current && recordingState === RECORDING_STATES.PAUSED) {
-      mediaRecorderRef.current.resume();
-      setRecordingState(RECORDING_STATES.RECORDING);
-
-      // Resume timer
-      timerIntervalRef.current = setInterval(() => {
-        const elapsed = (Date.now() - startTimeRef.current) / 1000;
-        setDuration(elapsed);
-
-        if (elapsed >= AUDIO_CONFIG.MAX_DURATION) {
-          stopRecording();
-        }
-      }, 100);
-    }
-  }, [recordingState, stopRecording]);
-
-  // Reset recording
+  // Rest of the hook remains the same...
+  
   const resetRecording = useCallback(() => {
     setRecordingState(RECORDING_STATES.IDLE);
     setAudioBlob(null);
@@ -199,7 +153,6 @@ export const useAudioRecorder = () => {
     audioChunksRef.current = [];
   }, []);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (streamRef.current) {
@@ -229,11 +182,8 @@ export const useAudioRecorder = () => {
     error,
     startRecording,
     stopRecording,
-    pauseRecording,
-    resumeRecording,
     resetRecording,
     isRecording: recordingState === RECORDING_STATES.RECORDING,
-    isPaused: recordingState === RECORDING_STATES.PAUSED,
     isCompleted: recordingState === RECORDING_STATES.COMPLETED,
   };
 };

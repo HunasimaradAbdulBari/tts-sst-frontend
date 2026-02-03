@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAudioRecorder } from '../hooks/useAudioRecorder';
 import { speechToText } from '../lib/apiClient';
@@ -43,87 +43,66 @@ export default function SpeechToText() {
     resetRecording,
   } = useAudioRecorder();
 
-  useEffect(() => {
-    if (isTranscribing) {
-      const interval = setInterval(() => {
-        setProgress(prev => prev >= 90 ? prev : prev + Math.random() * 10);
-      }, 300);
-      return () => clearInterval(interval);
-    }
-  }, [isTranscribing]);
-
   const handleStartRecording = async () => {
     try {
+      await startRecording();
       setTranscribedText('');
       setDetectedLanguage(null);
-      setProgress(0);
-      await startRecording();
-      toast.success(`Recording in ${STT_LANGUAGES.find(l => l.code === selectedLanguage)?.name}`);
-    } catch (error) {
-      toast.error(error.message || 'Failed to start recording');
+    } catch (err) {
+      toast.error('Failed to start recording. Please check microphone permissions.');
     }
   };
 
   const handleStopRecording = () => {
     stopRecording();
-    toast.success('Recording stopped');
   };
 
   const handleTranscribe = async () => {
-    if (!audioBlob) {
-      toast.error('No audio to transcribe');
-      return;
-    }
+    if (!audioBlob) return;
 
     setIsTranscribing(true);
-    setProgress(10);
-    
+    setProgress(0);
+
+    const progressInterval = setInterval(() => {
+      setProgress((prev) => Math.min(prev + 10, 90));
+    }, 200);
+
     try {
-      setProgress(30);
+      const response = await speechToText(audioBlob, selectedLanguage);
       
-      const audioFile = new File([audioBlob], 'recording.webm', { 
-        type: 'audio/webm' 
-      });
-      
-      setProgress(50);
-      
-      const result = await speechToText(audioFile, selectedLanguage);
-      
-      setProgress(80);
-      
-      const text = result?.data?.text || result?.text || '';
-      const langInfo = result?.data?.detected_language || result?.detected_language;
-      
-      if (!text || text.trim().length === 0) {
-        throw new Error('No text transcribed');
-      }
-      
+      clearInterval(progressInterval);
       setProgress(100);
-      setTranscribedText(text);
-      setDetectedLanguage(langInfo);
-      
-      toast.success('Transcribed successfully');
-      
+
+      if (response.text) {
+        setTranscribedText(response.text);
+        
+        if (response.language_info) {
+          setDetectedLanguage({
+            name: STT_LANGUAGES.find(l => l.code === response.language_info.language)?.name || response.language_info.language,
+            confidence: response.language_info.confidence || 1.0
+          });
+        }
+        
+        toast.success('Audio transcribed successfully!');
+        resetRecording();
+      }
     } catch (error) {
-      console.error('Transcription error:', error);
-      setProgress(0);
-      toast.error(error.message || 'Transcription failed');
+      clearInterval(progressInterval);
+      toast.error(error.message || 'Failed to transcribe audio');
     } finally {
       setIsTranscribing(false);
+      setTimeout(() => setProgress(0), 500);
     }
   };
 
   const handleCopy = () => {
-    if (transcribedText) {
-      navigator.clipboard.writeText(transcribedText);
-      toast.success('Copied to clipboard');
-    }
+    navigator.clipboard.writeText(transcribedText);
+    toast.success('Text copied to clipboard!');
   };
 
   const handleClear = () => {
     setTranscribedText('');
     setDetectedLanguage(null);
-    setProgress(0);
     resetRecording();
   };
 

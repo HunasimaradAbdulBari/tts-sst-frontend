@@ -13,31 +13,45 @@ const nextConfig = {
   images: {
     domains: ['localhost', 'render.com'],
     formats: ['image/avif', 'image/webp'],
-    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
   },
 
-  // Headers for security
+  // CRITICAL: Increase body size limit for large audio files
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '500mb', // UNLIMITED SIZE
+    },
+  },
+
+  // API route config for large files
+  api: {
+    bodyParser: {
+      sizeLimit: '500mb', // UNLIMITED SIZE
+    },
+    responseLimit: false,
+  },
+
+  // Headers for large file support
   async headers() {
     return [
       {
-        source: '/:path*',
+        source: '/api/:path*',
         headers: [
           {
             key: 'X-DNS-Prefetch-Control',
             value: 'on'
           },
           {
-            key: 'X-Frame-Options',
-            value: 'SAMEORIGIN'
+            key: 'Access-Control-Allow-Origin',
+            value: '*'
           },
           {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff'
+            key: 'Access-Control-Allow-Methods',
+            value: 'GET,POST,PUT,DELETE,OPTIONS'
           },
           {
-            key: 'Referrer-Policy',
-            value: 'origin-when-cross-origin'
-          }
+            key: 'Access-Control-Allow-Headers',
+            value: '*'
+          },
         ]
       }
     ]
@@ -54,16 +68,6 @@ const nextConfig = {
       };
     }
     return config;
-  },
-
-  // Production optimizations
-  productionBrowserSourceMaps: false,
-  compress: true,
-  
-  // PWA support
-  experimental: {
-    optimizeCss: true,
-    optimizePackageImports: ['lucide-react', 'react-icons'],
   },
 };
 

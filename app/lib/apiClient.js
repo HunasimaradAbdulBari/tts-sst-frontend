@@ -1,11 +1,10 @@
-// app/lib/apiClient.js - Updated with manual language support
 import axios from 'axios';
 import { API_BASE_URL, API_ENDPOINTS, ERROR_MESSAGES } from './constants';
 
-// Create axios instance - NO TIMEOUT
+// Create axios instance - NO TIMEOUT, UNLIMITED SIZE
 const apiClient = axios.create({
   baseURL: '/',
-  timeout: 0, // NO TIMEOUT
+  timeout: 0, // NO TIMEOUT - UNLIMITED
   maxContentLength: Infinity,
   maxBodyLength: Infinity,
   headers: {
@@ -49,34 +48,19 @@ apiClient.interceptors.response.use(
 );
 
 /**
- * Text to Speech API call - NO LANGUAGE PARAMETER (Auto-Detection)
- * NO LENGTH LIMIT
+ * Speech to Text API - UNLIMITED SIZE, KANNADA OPTIMIZED
  */
-export const textToSpeech = async (text) => {
+export const speechToText = async (audioBlob, language = 'kn') => {
   try {
-    const response = await apiClient.post('/api/tts', {
-      text
-    });
-    return response.data;
-  } catch (error) {
-    console.error('TTS API Error:', error);
-    throw error;
-  }
-};
-
-/**
- * Speech to Text API call - WITH MANUAL LANGUAGE SELECTION
- */
-export const speechToText = async (audioBlob, language = null) => {
-  try {
+    console.log(`🎙️ [API Client] Starting STT for ${language}`);
+    console.log(`📦 File size: ${(audioBlob.size / 1024 / 1024).toFixed(2)} MB`);
+    
     const formData = new FormData();
     formData.append('audio', audioBlob, 'recording.webm');
     
-    // Add manual language selection if provided
-    if (language) {
-      formData.append('language', language);
-      console.log(`🎯 [API Client] Manual language selected: ${language}`);
-    }
+    // Always send language (default: Kannada)
+    formData.append('language', language);
+    console.log(`🎯 [API Client] Language: ${language}`);
     
     const response = await apiClient.post('/api/stt', formData, {
       headers: {
@@ -85,10 +69,39 @@ export const speechToText = async (audioBlob, language = null) => {
       timeout: 0, // NO TIMEOUT
       maxContentLength: Infinity,
       maxBodyLength: Infinity,
+      onUploadProgress: (progressEvent) => {
+        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+        console.log(`📤 Upload progress: ${percentCompleted}%`);
+      },
     });
+    
+    console.log('✅ [API Client] STT Success');
     return response.data;
   } catch (error) {
-    console.error('STT API Error:', error);
+    console.error('❌ [API Client] STT Error:', error);
+    throw error;
+  }
+};
+
+/**
+ * Text to Speech API - AUTO LANGUAGE DETECTION
+ */
+export const textToSpeech = async (text) => {
+  try {
+    console.log(`🔊 [API Client] Starting TTS`);
+    
+    const response = await apiClient.post('/api/tts', {
+      text
+    }, {
+      timeout: 0,
+      maxContentLength: Infinity,
+      maxBodyLength: Infinity,
+    });
+    
+    console.log('✅ [API Client] TTS Success');
+    return response.data;
+  } catch (error) {
+    console.error('❌ [API Client] TTS Error:', error);
     throw error;
   }
 };
